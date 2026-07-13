@@ -313,8 +313,7 @@ setTradeHistory,
 const [strategyCondition, setStrategyCondition] =
   useState("Less Than");
 
-const [strategyValue, setStrategyValue] =
-  useState(30);
+const [strategyValue, setStrategyValue] = useState("30");
 
 const [strategyAction, setStrategyAction] =
   useState("BUY");
@@ -356,7 +355,9 @@ const [bbPeriod, setBbPeriod] = useState(20);
 
   return summary;
 }, [patterns]);
-const currentAsset = assets[0];
+const currentAsset =
+    assets.find(asset => asset.chartType === "candlestick")
+    || assets[0];
 const visiblePoints = points;
 const visibleAssets = assets.map((asset) => ({
   ...asset,
@@ -439,36 +440,47 @@ const totalClosedTrades = closedTrades.length;
     winRate,
   };
 }, [portfolioAnalytics, tradeHistory]);
-const closes = currentAsset.data.map((item) => item.close);
+const closes = currentAsset.data
+  .map((item) => Number(item.close))
+  .filter(Number.isFinite);
 
 const smaData = useMemo(
-  () => calculateSMA(closes, smaPeriod),
+  () => calculateSMA(currentAsset.data, smaPeriod),
   [closes, smaPeriod]
 );
 
 const emaData = useMemo(
-  () => calculateEMA(closes, emaPeriod),
+  () => calculateEMA(currentAsset.data, emaPeriod),
   [closes, emaPeriod]
 );
 
 const rsiData = useMemo(
-  () => calculateRSI(closes, rsiPeriod),
+  () => calculateRSI(currentAsset.data,rsiPeriod),
   [closes, rsiPeriod]
 );
 
 const bollingerData = useMemo(
-  () => calculateBollingerBands(closes, bbPeriod),
+  () => calculateBollingerBands(currentAsset.data, bbPeriod),
   [closes, bbPeriod]
 );
 
-const latestUpperBB =
-  bollingerData[bollingerData.length - 1]?.upper || 0;
+const latestUpperBB = Number.isFinite(
+  bollingerData[bollingerData.length - 1]?.upper
+)
+  ? bollingerData[bollingerData.length - 1].upper
+  : 0;
 
-const latestMiddleBB =
-  bollingerData[bollingerData.length - 1]?.middle || 0;
+const latestMiddleBB = Number.isFinite(
+  bollingerData[bollingerData.length - 1]?.middle
+)
+  ? bollingerData[bollingerData.length - 1].middle
+  : 0;
 
-const latestLowerBB =
-  bollingerData[bollingerData.length - 1]?.lower || 0;
+const latestLowerBB = Number.isFinite(
+  bollingerData[bollingerData.length - 1]?.lower
+)
+  ? bollingerData[bollingerData.length - 1].lower
+  : 0;
 const analytics = useMemo(() => {
   const latestPrice =
     currentAsset.data[currentAsset.data.length - 1]?.close;
@@ -688,13 +700,35 @@ const chartData = useMemo(() => {
         row[asset.id] = asset.data[index].close;
       });
 
-      row.SMA = smaData[index];
-      row.EMA = emaData[index];
-      row.RSI = rsiData[index];
+row.SMA = Number.isFinite(smaData[index])
+  ? smaData[index]
+  : null;
 
-      row.BBUpper = bollingerData[index]?.upper;
-      row.BBMiddle = bollingerData[index]?.middle;
-      row.BBLower = bollingerData[index]?.lower;
+row.EMA = Number.isFinite(emaData[index])
+  ? emaData[index]
+  : null;
+
+row.RSI = Number.isFinite(rsiData[index])
+  ? rsiData[index]
+  : null;
+
+row.BBUpper = Number.isFinite(
+  bollingerData[index]?.upper
+)
+  ? bollingerData[index].upper
+  : null;
+
+row.BBMiddle = Number.isFinite(
+  bollingerData[index]?.middle
+)
+  ? bollingerData[index].middle
+  : null;
+
+row.BBLower = Number.isFinite(
+  bollingerData[index]?.lower
+)
+  ? bollingerData[index].lower
+  : null;
 
       return row;
     }
@@ -754,20 +788,36 @@ const nextExecuted = [...executedStrategies];
 
     switch (strategy.indicator) {
       case "RSI":
-        currentValue = rsiData[rsiData.length - 1];
+        currentValue = Number.isFinite(
+  rsiData[rsiData.length - 1]
+)
+  ? rsiData[rsiData.length - 1]
+  : 0;
         break;
 
       case "SMA":
-        currentValue = smaData[smaData.length - 1];
+        
+        currentValue = Number.isFinite(
+  smaData[smaData.length - 1]
+)
+  ? smaData[smaData.length - 1]
+  : 0;
         break;
 
       case "EMA":
-        currentValue = emaData[emaData.length - 1];
+        currentValue = Number.isFinite(
+  emaData[emaData.length - 1]
+)
+  ? emaData[emaData.length - 1]
+  : 0;
         break;
 
       case "Bollinger":
-        currentValue =
-          bollingerData[bollingerData.length - 1]?.middle;
+        currentValue = Number.isFinite(
+  bollingerData[bollingerData.length - 1]
+)
+  ? bollingerData[bollingerData.length - 1]
+  : 0;
         break;
 
       default:
@@ -1001,12 +1051,31 @@ setSignals(prev => {
 });
 
 }; // <-- closes evaluateStrategies
+const latestRSI = Number.isFinite(
+  rsiData[rsiData.length - 1]
+)
+  ? rsiData[rsiData.length - 1]
+  : 0;
 
-const latestRSI = rsiData[rsiData.length - 1];
-const latestSMA = smaData[smaData.length - 1];
-const latestEMA = emaData[emaData.length - 1];
-const latestBB =
-  bollingerData[bollingerData.length - 1]?.middle;
+const latestSMA = Number.isFinite(
+  smaData[smaData.length - 1]
+)
+  ? smaData[smaData.length - 1]
+  : 0;
+
+const latestEMA = Number.isFinite(
+  emaData[emaData.length - 1]
+)
+  ? emaData[emaData.length - 1]
+  : 0;
+
+
+
+  const latestBB = Number.isFinite(
+  bollingerData[bollingerData.length - 1]
+)
+  ? bollingerData[bollingerData.length - 1]
+  : 0;
 
 useEffect(() => {
   if (strategies.length === 0) return;
@@ -1043,9 +1112,11 @@ useEffect(() => {
         <div>
           <h2 className="text-2xl font-bold text-white">{currentAsset.id}</h2>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-3xl font-bold text-white">
-              {currentAsset.currentValue.toFixed(2)}
-            </span>
+           <span className="text-3xl font-bold text-white">
+  {Number.isFinite(currentAsset.currentValue)
+      ? currentAsset.currentValue.toFixed(2)
+      : "0.00"}
+</span>
             <motion.span
               className={`flex items-center ${
                 currentAsset.change.value >= 0
@@ -1110,7 +1181,7 @@ useEffect(() => {
           </motion.button>
         </div>
       </div>
-<div className="flex overflow-x-auto whitespace-nowrap gap-2 pb-2 mb-4 scrollbar-hide">
+<div className="flex overflow-x-auto flex-wrap gap-2 pb-2 mb-4 scrollbar-hide">
   
 
   {[
@@ -1624,39 +1695,60 @@ useEffect(() => {
   </div>
 )}
       <h3 className="text-xl font-semibold text-white mt-6 mb-3">Assets</h3>
-      <div className="flex flex-wrap gap-4 mt-4">
-        {assets.map((asset) => (
-          <div
+      <div className="grid
+    grid-cols-1
+    sm:grid-cols-2
+    lg:grid-cols-3
+    gap-4
+    mt-4">
+
+    {assets.map(asset=>(
+        <div
             key={asset.id}
-            className="flex flex-col sm:flex-row gap-3 sm:gap-0 items-start sm:items-center justify-between w-full lg:w-[330px]"
-          >
-            <input
-              className="accent-blue-500"
-              type="checkbox"
-              checked={asset.visible}
-              onChange={() => toggleAssetVisibility(asset.id)}
-            />
+            className="bg-gray-700 rounded-lg p-4 flex items-center justify-between"
+        >
 
-            <div>
-              <div style={{ color: asset.color }} className="font-semibold">
-                {asset.id}
-              </div>
+            <div className="flex items-center gap-3">
 
-              <div className="text-xs text-gray-400">{asset.type}</div>
+                <input
+                    type="checkbox"
+                    checked={asset.visible}
+                    onChange={()=>toggleAssetVisibility(asset.id)}
+                />
+
+                <div>
+
+                    <div
+                        style={{color:asset.color}}
+                        className="font-semibold"
+                    >
+                        {asset.id}
+                    </div>
+
+                    <div className="text-xs text-gray-400">
+                        {asset.type}
+                    </div>
+
+                </div>
+
             </div>
 
             <select
-              value={asset.chartType}
-              onChange={(e) => updateChartType(asset.id, e.target.value)}
-              className="bg-gray-700 text-white rounded px-2 py-1 text-sm"
+                value={asset.chartType}
+                onChange={(e)=>
+                    updateChartType(asset.id,e.target.value)
+                }
+                className="bg-gray-600 rounded px-2 py-1"
             >
-              <option value="line">Line</option>
-              <option value="bar">Bar</option>
-              <option value="candlestick">Candlestick</option>
+                <option value="line">Line</option>
+                <option value="bar">Bar</option>
+                <option value="candlestick">Candlestick</option>
             </select>
-          </div>
-        ))}
-      </div>
+
+        </div>
+    ))}
+
+</div>
       <div className="flex flex-wrap gap-2 mt-4 justify-center sm:justify-between  flex-wrap">
         {["5M", "10M", "15M", "30M", "1H"].map((range) => (
           <motion.button
@@ -1766,12 +1858,11 @@ className="w-full bg-gray-700 p-2 rounded mt-2"
   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
     <select
-      value={strategyIndicator}
-      onChange={(e) =>
-        setStrategyIndicator(e.target.value)
-      }
-      className="bg-gray-700 p-2 rounded"
-    >
+value={strategyIndicator}
+onChange={(e)=>{
+    setStrategyIndicator(e.target.value);
+}}
+>
       <option>RSI</option>
       <option>SMA</option>
       <option>EMA</option>
@@ -1795,9 +1886,10 @@ className="w-full bg-gray-700 p-2 rounded mt-2"
     <input
       type="number"
       value={strategyValue}
-      onChange={(e) =>
-        setStrategyValue(Number(e.target.value))
-      }
+     onChange={(e)=>{
+    const val = Number(e.target.value);
+    setStrategyValue(Number.isFinite(val) ? val : 0);
+}}
       className="bg-gray-700 p-2 rounded"
     />
 
@@ -2669,7 +2761,7 @@ export default function GrowwNIFTY50Page() {
   const [selectedIndicators, setSelectedIndicators] = useState([]);
   const [showBuyModal, setShowBuyModal] = useState(false);
 
-  const [buyQuantity, setBuyQuantity] = useState(1);
+  const [buyQuantity, setBuyQuantity] = useState("1");
   useEffect(() => {
     setTimeout(() => setLoading(false), 2000);
   }, []);
@@ -2788,27 +2880,29 @@ setIsInPortfolio(exists);
       toast.error("Please login first");
       return;
     }
-if (buyQuantity <= 0) {
-  toast.error("Please enter a valid quantity");
-  return;
+const quantity = Number(buyQuantity);
+
+if (!quantity || quantity < 1) {
+    toast.error("Please enter a valid quantity");
+    return;
 }
     const currentPrice = 425000;
 
-    const transactionCost = currentPrice * buyQuantity * 0.005;
+    const transactionCost = currentPrice * quantity * 0.005;
     const transaction = {
       type: "BUY",
       stock: id,
-      quantity: buyQuantity,
+      quantity: quantity,
       price: currentPrice,
       fee: transactionCost,
-      total: currentPrice * buyQuantity + transactionCost,
+      total: currentPrice * quantity + transactionCost,
       date: new Date().toISOString(),
     };
 
     const asset = {
       id,
 
-      quantity: buyQuantity,
+      quantity: quantity,
 
       avgPrice: currentPrice,
 
@@ -2818,7 +2912,7 @@ if (buyQuantity <= 0) {
 
       transactionCost,
 
-      costBasis: currentPrice * buyQuantity + transactionCost,
+      costBasis: currentPrice * quantity + transactionCost,
 
       unrealizedPL: 0,
 
@@ -2826,7 +2920,7 @@ if (buyQuantity <= 0) {
 
       returnPercentage: 0,
 
-      portfolioValue: currentPrice * buyQuantity,
+      portfolioValue: currentPrice * quantity,
     };
 
     const userRef = doc(db, "users", user.uid);
@@ -2964,7 +3058,7 @@ if (buyQuantity <= 0) {
       toast.error("Something went wrong");
     }
   };
-
+const quantity = Number(buyQuantity) || 0;
   return (
     <div className="bg-gray-900 min-h-screen text-gray-300">
       <Header />
@@ -3000,7 +3094,7 @@ setTradeHistory={setTradeHistory}
               <input
                 type="number"
                 min={1}
-                value={buyQuantity}
+                value={quantity}
                 onChange={(e) =>
   setBuyQuantity(Number(e.target.value) || 1)
 }
@@ -3010,12 +3104,12 @@ setTradeHistory={setTradeHistory}
               <p className="mb-2">Current Price : ₹425000</p>
 
               <p className="mb-2">
-                Transaction Fee : ₹{(425000 * buyQuantity * 0.005).toFixed(2)}
+                Transaction Fee : ₹{(425000 * quantity * 0.005).toFixed(2)}
               </p>
 
               <p className="font-bold mb-5">
                 Total : ₹
-                {(425000 * buyQuantity + 425000 * buyQuantity * 0.005).toFixed(
+                {(425000 * quantity + 425000 * quantity * 0.005).toFixed(
                   2,
                 )}
               </p>
