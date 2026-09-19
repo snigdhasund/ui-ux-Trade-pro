@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth } from "@/firebase";
 import { db } from "@/firebase";
+import { DEFAULT_PREFERENCES } from "@/utils/preferences";
 import { useRouter } from "next/navigation";
 import { doc, setDoc } from "firebase/firestore";
 export default function SignupPage() {
@@ -26,16 +27,15 @@ export default function SignupPage() {
         password,
       );
       await setDoc(doc(db, "users", userCredential.user.uid), {
-        uid: userCredential.user.uid,
-        name: name,
-        email: userCredential.user.email,
-        watchlist: [],
-        portfolio: [],
-        indicators: [],
-        preferences: {
-          theme: "dark",
-        },
-      });
+  uid: userCredential.user.uid,
+  name: name,
+  email: userCredential.user.email,
+  watchlist: [],
+  portfolio: [],
+  tradeHistory: [],
+  transactions: [],
+  preferences: DEFAULT_PREFERENCES,
+});
 
       await updateProfile(userCredential.user, {
         displayName: name,

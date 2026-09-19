@@ -6,11 +6,6 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
 } from "recharts";
 type PortfolioItem = {
   id: string;
@@ -45,10 +40,10 @@ export default function PortfolioAnalytics({ portfolio }: Props) {
       ? (totalPL / totalInvestment) * 100
       : 0;
 
-     const pieData = portfolio.map((stock) => ({
+const pieData = portfolio.map((stock) => ({
   name: stock.id,
-  value: stock.portfolioValue,
-})); 
+  value: stock.portfolioValue ?? 0,
+}));
 const COLORS = [
   "#3B82F6",
   "#10B981",
@@ -59,16 +54,7 @@ const COLORS = [
   "#EC4899",
 ];
 
-const performanceData = Array.from({ length: 7 }, (_, i) => {
 
-  const variation = (Math.random() - 0.5) * 0.12;
-
-  return {
-    day: `Day ${i + 1}`,
-    value: currentValue * (1 + variation),
-  };
-
-});
 
 const bestPerformer =
   portfolio.length > 0
@@ -245,7 +231,7 @@ const diversificationScore =
             <div className="text-right">
 
               <p className="text-white font-semibold text-right break-all">
-                ₹{stock.portfolioValue.toFixed(2)}
+                ₹{(stock.portfolioValue ?? 0).toFixed(2)}
               </p>
 
             </div>
@@ -261,52 +247,7 @@ const diversificationScore =
 )}
 </div>
 
-<div className="mt-12">
 
-  <h3 className="text-lg sm:text-xl font-semibold text-white mb-6">
-    Portfolio Performance
-  </h3>
-
-  <div className="bg-gray-700 rounded-xl p-4 h-72 sm:h-80 md:h-96">
-
-    <ResponsiveContainer width="100%" height="100%">
-
-      <LineChart data={performanceData}>
-
-        <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-
-        <XAxis
-          dataKey="day"
-          stroke="#aaa"
-        />
-
-        <YAxis
-          stroke="#aaa"
-        />
-
-        <Tooltip
-          formatter={(value) => [
-            `₹${Number(value).toFixed(2)}`,
-            "Portfolio Value",
-          ]}
-        />
-
-        <Line
-          type="monotone"
-          dataKey="value"
-          stroke="#3B82F6"
-          strokeWidth={3}
-          dot={{ r: 4 }}
-          activeDot={{ r: 7 }}
-        />
-
-      </LineChart>
-
-    </ResponsiveContainer>
-
-  </div>
-
-</div>
 <div className="mt-12">
 
   <h3 className="text-lg sm:text-xl font-semibold text-white mb-6">

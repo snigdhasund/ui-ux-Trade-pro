@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AuthProvider } from "@/context/AuthContext";
+import { MarketProvider } from "@/context/MarketContext";
 import "./globals.css";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
@@ -133,6 +134,7 @@ export default function RootLayout({
   className={`${GeistSans.variable} ${GeistMono.variable} antialiased overflow-x-hidden bg-gray-900`}
 >
   <AuthProvider>
+    <MarketProvider>
   <Toaster
     position="top-right"
     reverseOrder={false}
@@ -150,6 +152,7 @@ export default function RootLayout({
   </main>
 
   <Footer />
+  </MarketProvider>
 </AuthProvider>
 </body>
     </html>

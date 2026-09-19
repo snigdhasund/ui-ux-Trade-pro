@@ -1,5 +1,12 @@
 "use client";
 import CandlestickChart from "@/components/CandlestickChart";
+import CustomIndicatorBuilder from "@/components/CustomIndicatorBuilder";
+import StrategyPerformance from "@/components/StrategyPerformance";
+import { evaluateCustomIndicator } from "@/utils/customIndicators";
+import { savePreferences } from "@/utils/preferences";
+import { useMarket } from "@/context/MarketContext";
+import AnalyticsDashboard from "@/components/AnalyticsDashboard";
+import MultiAssetChart from "@/components/MultiAssetChart";
 import {
   detectPatterns,
   patternInfo,
@@ -22,7 +29,7 @@ import {
   setDoc,
 } from "firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo,useRef } from "react";
 import {
   Search,
   Bell,
@@ -46,17 +53,27 @@ const fadeInUp = {
   transition: { duration: 0.5 },
 };
 
+// import {
+//   ResponsiveContainer,
+//   LineChart,
+//   ComposedChart,
+//   Line,
+//   Bar,
+//   XAxis,
+//   YAxis,
+//   CartesianGrid,
+//   Tooltip,
+//   Legend,
+// } from "recharts";
+
 import {
   ResponsiveContainer,
   LineChart,
-  ComposedChart,
   Line,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
 } from "recharts";
 
 const Header = () => {
@@ -189,90 +206,90 @@ const Breadcrumb = ({ stock }) => (
   </motion.div>
 );
 
-const generateRandomData = (currentValue, points, interval) => {
-  const data = [];
+// const generateRandomData = (currentValue, points, interval) => {
+//   const data = [];
 
-  let price = currentValue;
+//   let price = currentValue;
 
-  for (let i = points; i >= 0; i--) {
-  const date = new Date(Date.now() - i * interval);
+//   for (let i = points; i >= 0; i--) {
+//   const date = new Date(Date.now() - i * interval);
 
-    const open = price;
+//     const open = price;
 
-    const close = open + (Math.random() - 0.5) * 12;
+//     const close = open + (Math.random() - 0.5) * 12;
 
-    const high = Math.max(open, close) + Math.random() * 5;
+//     const high = Math.max(open, close) + Math.random() * 5;
 
-    const low = Math.min(open, close) - Math.random() * 5;
+//     const low = Math.min(open, close) - Math.random() * 5;
 
-    data.push({
-      date,
-      open,
-      high,
-      low,
-      close,
-    });
+//     data.push({
+//       date,
+//       open,
+//       high,
+//       low,
+//       close,
+//     });
 
-    price = close;
-  }
+//     price = close;
+//   }
 
-  return data;
-};
+//   return data;
+// };
 
 
-const generateNextPoint = (currentPrice) => {
-  const open = currentPrice;
+// const generateNextPoint = (currentPrice) => {
+//   const open = currentPrice;
 
-  const close = open + (Math.random() - 0.5) * 12;
+//   const close = open + (Math.random() - 0.5) * 12;
 
-  const high = Math.max(open, close) + Math.random() * 5;
+//   const high = Math.max(open, close) + Math.random() * 5;
 
-  const low = Math.min(open, close) - Math.random() * 5;
+//   const low = Math.min(open, close) - Math.random() * 5;
 
-  return {
-    date: new Date(),
-    open,
-    high,
-    low,
-    close,
-  };
-};
+//   return {
+//     date: new Date(),
+//     open,
+//     high,
+//     low,
+//     close,
+//   };
+// };
 
-const getTimeRangeConfig = (timeRange) => {
-  switch (timeRange) {
-    case "5M":
-      return { points: 60, interval: 5 * 1000 };
+// const getTimeRangeConfig = (timeRange) => {
+//   switch (timeRange) {
+//     case "5M":
+//       return { points: 60, interval: 5 * 1000 };
 
-    case "10M":
-      return { points: 60, interval: 10 * 1000 };
+//     case "10M":
+//       return { points: 60, interval: 10 * 1000 };
 
-    case "15M":
-      return { points: 60, interval: 15 * 1000 };
+//     case "15M":
+//       return { points: 60, interval: 15 * 1000 };
 
-    case "30M":
-      return { points: 60, interval: 30 * 1000 };
+//     case "30M":
+//       return { points: 60, interval: 30 * 1000 };
 
-    case "1H":
-      return { points: 60, interval: 60 * 1000 };
+//     case "1H":
+//       return { points: 60, interval: 60 * 1000 };
 
-    default:
-      return { points: 60, interval: 5 * 1000 };
-  }
-};
+//     default:
+//       return { points: 60, interval: 5 * 1000 };
+//   }
+// };
 
-const createAsset = (id, type, startPrice, color) => ({
-  id,
-  type,
-  color,
-  visible: true,
-  chartType: "line",
-  currentValue: startPrice,
-  data: generateRandomData(startPrice, 60, 5000),
-  change: {
-    value: 0,
-    percentage: 0,
-  },
-});
+// const createAsset = (id, type, startPrice, color) => ({
+//   id,
+//   type,
+//   color,
+//   visible: true,
+//   chartType: "line",
+//   currentValue: startPrice,
+//   data: generateRandomData(startPrice, 60, 5000),
+//   change: {
+//     value: 0,
+//     percentage: 0,
+//   },
+// });
 
 const StockChart = ({
   stock,
@@ -293,20 +310,41 @@ const StockChart = ({
 tradeHistory,
 setTradeHistory,
   toggleIndicator,
+  initialPreferences,
+  onPreferencesChange,
 }) => {
-  const [assets, setAssets] = useState([
-    createAsset(stock, "Stock", 425000, "#3B82F6"),
+  // const [assets, setAssets] = useState([
+  //   createAsset(stock, "Stock", 425000, "#3B82F6"),
 
-    createAsset("BTC", "Crypto", 64000, "#F59E0B"),
+  //   createAsset("BTC", "Crypto", 64000, "#F59E0B"),
 
-    createAsset("US10Y", "Bond", 20000, "#10B981"),
-  ]);
+  //   createAsset("US10Y", "Bond", 20000, "#10B981"),
+  // ]);
 
-  const { points, interval: updateInterval } =
-  getTimeRangeConfig(selectedTimeRange);
+  const {
+  assets: allAssets,
+  toggleVisibility: toggleAssetVisibility,
+  updateChartType,
+  setTickIntervalMs,
+} = useMarket();
+
+const assets = useMemo(
+  () =>
+    allAssets.filter((a) =>
+      ["NIFTY50", "BTC", "US10Y"].includes(a.id)
+    ),
+  [allAssets]
+);
+
+  // const { points, interval: updateInterval } =
+  // getTimeRangeConfig(selectedTimeRange);
 
   const [patterns, setPatterns] = useState([]);
-    const [selectedPattern, setSelectedPattern] = useState("All");
+
+    // const [selectedPattern, setSelectedPattern] = useState("All");
+    const [selectedPattern, setSelectedPattern] = useState(
+  initialPreferences?.selectedPattern ?? "All"
+);
 
     const [strategyIndicator, setStrategyIndicator] = useState("RSI");
 
@@ -318,26 +356,92 @@ const [strategyValue, setStrategyValue] = useState("30");
 const [strategyAction, setStrategyAction] =
   useState("BUY");
 
-const [strategies, setStrategies] =
-  useState([]);
+// const [strategies, setStrategies] =
+//   useState([]);
+const [strategies, setStrategies] = useState(
+  initialPreferences?.strategies ?? []
+);
+
+const [customIndicators, setCustomIndicators] = useState(
+  initialPreferences?.customIndicators ?? []
+);
 
   const [signals, setSignals] = useState([]);
-  const [visibleAnalytics, setVisibleAnalytics] = useState({
-  trend: true,
-  volatility: true,
-  momentum: true,
-  risk: true,
-  insight: true,
-});
+//   const [visibleAnalytics, setVisibleAnalytics] = useState({
+//   trend: true,
+//   volatility: true,
+//   momentum: true,
+//   risk: true,
+//   insight: true,
+// });
+
+const [visibleAnalytics, setVisibleAnalytics] = useState(
+  initialPreferences?.visibleAnalytics ?? {
+    trend: true,
+    volatility: true,
+    momentum: true,
+    risk: true,
+    insight: true,
+  }
+);
+
 const [executedStrategies, setExecutedStrategies] =
 useState([]);
-  const [smaPeriod, setSmaPeriod] = useState(20);
 
-const [emaPeriod, setEmaPeriod] = useState(20);
 
-const [rsiPeriod, setRsiPeriod] = useState(14);
+//   const [smaPeriod, setSmaPeriod] = useState(20);
 
-const [bbPeriod, setBbPeriod] = useState(20);
+// const [emaPeriod, setEmaPeriod] = useState(20);
+
+// const [rsiPeriod, setRsiPeriod] = useState(14);
+
+// const [bbPeriod, setBbPeriod] = useState(20);
+
+const [smaPeriod, setSmaPeriod] = useState(
+  initialPreferences?.smaPeriod ?? 20
+);
+const [emaPeriod, setEmaPeriod] = useState(
+  initialPreferences?.emaPeriod ?? 20
+);
+const [rsiPeriod, setRsiPeriod] = useState(
+  initialPreferences?.rsiPeriod ?? 14
+);
+const [bbPeriod, setBbPeriod] = useState(
+  initialPreferences?.bbPeriod ?? 20
+);
+
+
+// Persist selectedPattern
+useEffect(() => {
+  onPreferencesChange?.({ selectedPattern });
+}, [selectedPattern]);
+
+// Persist indicator periods (debounced by value change)
+useEffect(() => {
+  onPreferencesChange?.({
+    smaPeriod,
+    emaPeriod,
+    rsiPeriod,
+    bbPeriod,
+  });
+}, [smaPeriod, emaPeriod, rsiPeriod, bbPeriod]);
+
+// // Persist visible analytics toggles
+// useEffect(() => {
+//   onPreferencesChange?.({ visibleAnalytics });
+// }, [visibleAnalytics]);
+
+
+
+// Persist strategies
+useEffect(() => {
+  onPreferencesChange?.({ strategies });
+}, [strategies]);
+
+// Persist custom indicators
+useEffect(() => {
+  onPreferencesChange?.({ customIndicators });
+}, [customIndicators]);
   
   const patternSummary = useMemo(() => {
   const summary = {
@@ -355,13 +459,29 @@ const [bbPeriod, setBbPeriod] = useState(20);
 
   return summary;
 }, [patterns]);
+
+const FALLBACK_ASSET = {
+  id: "—",
+  type: "Stock",
+  color: "#666",
+  visible: false,
+  chartType: "line",
+  currentValue: 0,
+  data: [],
+  change: { value: 0, percentage: 0 },
+};
+
 const currentAsset =
-    assets.find(asset => asset.chartType === "candlestick")
-    || assets[0];
-const visiblePoints = points;
+  assets.find((asset) => asset.chartType === "candlestick") ||
+  assets[0] ||
+  FALLBACK_ASSET;
+
+
+
+// const visiblePoints = points;
 const visibleAssets = assets.map((asset) => ({
   ...asset,
-  data: asset.data.slice(-visiblePoints),
+  data: asset.data.slice(-60),
 }));
 const portfolioAnalytics = useMemo(() => {
   return portfolio.map((asset) => {
@@ -481,6 +601,18 @@ const latestLowerBB = Number.isFinite(
 )
   ? bollingerData[bollingerData.length - 1].lower
   : 0;
+
+// Evaluate all enabled custom indicators against current asset's data
+const customIndicatorData = useMemo(() => {
+  return customIndicators
+    .filter((ci) => ci.enabled)
+    .map((ci) => ({
+      ...ci,
+      values: evaluateCustomIndicator(ci.formula, currentAsset.data),
+    }));
+}, [customIndicators, currentAsset.data]);
+
+
 const analytics = useMemo(() => {
   const latestPrice =
     currentAsset.data[currentAsset.data.length - 1]?.close;
@@ -614,74 +746,74 @@ return {
 
   setPatterns(detected);
 }, [currentAsset.data]);
-  const toggleAssetVisibility = (id) => {
-    setAssets((prev) =>
-      prev.map((asset) =>
-        asset.id === id ? { ...asset, visible: !asset.visible } : asset,
-      ),
-    );
-  };
-  const updateChartType = (id, chartType) => {
-    setAssets((prevAssets) =>
-      prevAssets.map((asset) =>
-        asset.id === id ? { ...asset, chartType } : asset,
-      ),
-    );
-  };
+  // const toggleAssetVisibility = (id) => {
+  //   setAssets((prev) =>
+  //     prev.map((asset) =>
+  //       asset.id === id ? { ...asset, visible: !asset.visible } : asset,
+  //     ),
+  //   );
+  // };
+  // const updateChartType = (id, chartType) => {
+  //   setAssets((prevAssets) =>
+  //     prevAssets.map((asset) =>
+  //       asset.id === id ? { ...asset, chartType } : asset,
+  //     ),
+  //   );
+  // };
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setAssets((prevAssets) =>
-        prevAssets.map((asset) => {
-          const nextPoint = generateNextPoint(asset.currentValue);
+//   useEffect(() => {
+//     const timer = setInterval(() => {
+//       setAssets((prevAssets) =>
+//         prevAssets.map((asset) => {
+//           const nextPoint = generateNextPoint(asset.currentValue);
 
-         const newCurrentValue = nextPoint.close;
+//          const newCurrentValue = nextPoint.close;
 
-          const initialValue = asset.data[0].open;
+//           const initialValue = asset.data[0].open;
 
-          const changeValue = newCurrentValue - initialValue;
+//           const changeValue = newCurrentValue - initialValue;
 
-          const changePercentage = (changeValue / initialValue) * 100;
+//           const changePercentage = (changeValue / initialValue) * 100;
 
-          const updatedData = [...asset.data, nextPoint].slice(-60);
+//           const updatedData = [...asset.data, nextPoint].slice(-60);
 
-          return {
-            ...asset,
-            currentValue: newCurrentValue,
-            data: updatedData,
-            change: {
-              value: changeValue,
-              percentage: changePercentage,
-            },
-          };
-        }),
-      );
-    }, updateInterval);
+//           return {
+//             ...asset,
+//             currentValue: newCurrentValue,
+//             data: updatedData,
+//             change: {
+//               value: changeValue,
+//               percentage: changePercentage,
+//             },
+//           };
+//         }),
+//       );
+//     }, updateInterval);
 
-    setPortfolio((prev) =>
-  prev.map((item) =>
-    item.id === currentAsset.id
-      ? {
-          ...item,
-          previousPrice: item.currentPrice,
-          currentPrice: assets[0].currentValue,
-        }
-      : item
-  )
-);
+//     setPortfolio((prev) =>
+//   prev.map((item) =>
+//     item.id === currentAsset.id
+//       ? {
+//           ...item,
+//           previousPrice: item.currentPrice,
+//           currentPrice: assets[0].currentValue,
+//         }
+//       : item
+//   )
+// );
 
-    return () => clearInterval(timer);
-  }, [selectedTimeRange,updateInterval]);
+//     return () => clearInterval(timer);
+//   }, [selectedTimeRange,updateInterval]);
 
 
-useEffect(() => {
-  setAssets((prevAssets) =>
-    prevAssets.map((asset) => ({
-      ...asset,
-      data: generateRandomData(asset.currentValue, points, updateInterval),
-    }))
-  );
-}, [selectedTimeRange, points, updateInterval]);
+// useEffect(() => {
+//   setAssets((prevAssets) =>
+//     prevAssets.map((asset) => ({
+//       ...asset,
+//       data: generateRandomData(asset.currentValue, points, updateInterval),
+//     }))
+//   );
+// }, [selectedTimeRange, points, updateInterval]);
 
 
   const minLength = Math.min(
@@ -690,7 +822,7 @@ useEffect(() => {
 
 const chartData = useMemo(() => {
   return Array.from(
-    { length: minLength - 1 },
+    { length: minLength },
     (_, index) => {
       const row = {
         time: visibleAssets[0].data[index].date.toLocaleTimeString(),
@@ -935,6 +1067,7 @@ const currentRSI = rsiData[rsiData.length - 1];
   total: currentAsset.currentValue * 1,
   profitLoss: 0,
   date: new Date().toLocaleString(),
+  strategyKey: strategyKey, 
 };
 
 
@@ -1274,7 +1407,9 @@ useEffect(() => {
   </div>
 
 </div>
-<div className="bg-gray-800 border border-gray-700 rounded-xl p-5 mb-6">
+
+
+{/* <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 mb-6">
 
   <h2 className="text-xl font-bold text-white mb-5">
     Advanced Analytics Dashboard
@@ -1356,9 +1491,9 @@ useEffect(() => {
 
   </div>
 
-</div>
+</div> */}
 
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+{/* <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
 
 
 {visibleAnalytics.volatility && (
@@ -1417,9 +1552,9 @@ useEffect(() => {
     </div>
   </div>
 
-</div>
+</div> */}
 
-<div className="bg-gray-800 border border-gray-700 rounded-xl p-5 mb-6">
+{/* <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 mb-6">
 
   <h2 className="text-xl font-bold text-white mb-5">
     Live Technical Indicators
@@ -1503,9 +1638,10 @@ useEffect(() => {
 
   </div>
 
-</div>
+</div> */}
 
-{visibleAnalytics.insight && (
+
+{/* {visibleAnalytics.insight && (
 <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 mb-6">
 
   <h2 className="text-xl font-bold text-white mb-5">
@@ -1573,8 +1709,10 @@ useEffect(() => {
   </div>
 
 </div>
-)}
-      <div className="w-full h-[260px] sm:h-[350px] lg:h-[450px]">
+)} */}
+
+
+      {/* <div className="w-full h-[260px] sm:h-[350px] lg:h-[450px]">
       
 {currentAsset.chartType === "candlestick" ? (
     <CandlestickChart
@@ -1667,7 +1805,19 @@ useEffect(() => {
           </ComposedChart>
         </ResponsiveContainer>
         )}
-      </div>
+      </div> */}
+<div className="w-full">
+  <MultiAssetChart
+    assets={assets}
+    patterns={patterns}
+    selectedPattern={selectedPattern}
+    selectedIndicators={selectedIndicators}
+    smaData={smaData}
+    emaData={emaData}
+    bollingerData={bollingerData}
+    customIndicatorData={customIndicatorData}
+  />
+</div>
 
       {selectedIndicators.includes("RSI") && (
   <div className="bg-gray-800 rounded-xl p-5 mt-5 border border-gray-700">
@@ -1694,6 +1844,15 @@ useEffect(() => {
     </ResponsiveContainer>
   </div>
 )}
+
+<AnalyticsDashboard
+  assets={assets}
+  selectedTimeRange={selectedTimeRange}
+  visibleAnalytics={visibleAnalytics}
+  setVisibleAnalytics={setVisibleAnalytics}
+  onPreferencesChange={onPreferencesChange}
+/>
+
       <h3 className="text-xl font-semibold text-white mt-6 mb-3">Assets</h3>
       <div className="grid
     grid-cols-1
@@ -1849,7 +2008,12 @@ className="w-full bg-gray-700 p-2 rounded mt-2"
 
 </div>
 
-      <div className="bg-gray-800 rounded-xl border border-gray-700 p-5 mt-8">
+<CustomIndicatorBuilder
+  indicators={customIndicators}
+  onChange={setCustomIndicators}
+/>
+
+<div className="bg-gray-800 rounded-xl border border-gray-700 p-5 mt-8">
 
   <h2 className="text-xl font-bold text-white mb-5">
     Strategy Builder
@@ -2093,6 +2257,12 @@ signal.action==="BUY"
 }
 
 </div>
+
+<StrategyPerformance
+  strategies={strategies}
+  tradeHistory={tradeHistory}
+/>
+
 <div className="bg-gray-800 rounded-xl border border-gray-700 p-5 mt-8">
 
   <h2 className="text-xl font-bold text-white mb-5">
@@ -2397,7 +2567,7 @@ asset.returnPercentage>=0
 
 </div>
 
-<div className="bg-gray-800 rounded-xl p-5 mt-8 border border-gray-700">
+{/* <div className="bg-gray-800 rounded-xl p-5 mt-8 border border-gray-700">
 
   <h2 className="text-xl font-bold text-white mb-5">
     Performance Dashboard
@@ -2500,7 +2670,9 @@ asset.returnPercentage>=0
 
   </div>
 
-</div>
+</div> */}
+
+
       <PerformancePanel
         performance={assetPerformance}
         highestGainer={highestGainer}
@@ -2750,7 +2922,7 @@ const OpenInterest = () => {
 
 export default function GrowwNIFTY50Page() {
   const { id } = useParams();
-  const { user } = useAuth();
+  const { user,userData } = useAuth();
   const [loading, setLoading] = useState(true);
   const [isInWatchlist, setIsInWatchlist] = useState(false);
   const [watchlist, setWatchlist] = useState([]);
@@ -2788,31 +2960,56 @@ export default function GrowwNIFTY50Page() {
 
     loadWatchlist();
   }, [user, id]);
-  useEffect(() => {
-    const fetchWatchlist = async () => {
-      if (!user) return;
+//   useEffect(() => {
+//     const fetchWatchlist = async () => {
+//       if (!user) return;
 
-      const docRef = doc(db, "users", user.uid);
-      const docSnap = await getDoc(docRef);
+//       const docRef = doc(db, "users", user.uid);
+//       const docSnap = await getDoc(docRef);
 
-      if (docSnap.exists()) {
-        const data = docSnap.data();
+//       if (docSnap.exists()) {
+//         const data = docSnap.data();
 
-        setWatchlist(data.watchlist || []);
+//         setWatchlist(data.watchlist || []);
 
-        setSelectedTimeRange(data.selectedTimeRange || "5M");
-        setPortfolio(data.portfolio || []);
-        setTradeHistory(data.tradeHistory || []);
-        setSelectedIndicators(data.selectedIndicators || []);
+//         setSelectedTimeRange(data.selectedTimeRange || "5M");
+//         setPortfolio(data.portfolio || []);
+//         setTradeHistory(data.tradeHistory || []);
+//         setSelectedIndicators(data.selectedIndicators || []);
 
-        const exists = data.portfolio?.some(asset => asset.id === id) ?? false;
+//         const exists = data.portfolio?.some(asset => asset.id === id) ?? false;
 
-setIsInPortfolio(exists);
-      }
-    };
+// setIsInPortfolio(exists);
+//       }
+//     };
 
-    fetchWatchlist();
-  }, [user]);
+//     fetchWatchlist();
+//   }, [user]);
+useEffect(() => {
+  const fetchUserState = async () => {
+    if (!user) return;
+
+    const docRef = doc(db, "users", user.uid);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) return;
+
+    const data = docSnap.data();
+    const prefs = data.preferences ?? {};
+
+    setWatchlist(data.watchlist || []);
+    setPortfolio(data.portfolio || []);
+    setTradeHistory(data.tradeHistory || []);
+
+    // Load preferences with safe defaults
+    setSelectedTimeRange(prefs.selectedTimeRange ?? "5M");
+    setSelectedIndicators(prefs.selectedIndicators ?? []);
+
+    const exists = data.portfolio?.some((asset) => asset.id === id) ?? false;
+    setIsInPortfolio(exists);
+  };
+
+  fetchUserState();
+}, [user, id]);
   if (loading) {
     return (
       <div className="bg-gray-900 min-h-screen flex items-center justify-center">
@@ -3019,45 +3216,88 @@ if (!quantity || quantity < 1) {
   }
 };
 
-  const updateTimeRange = async (range) => {
-    setSelectedTimeRange(range);
+  // const updateTimeRange = async (range) => {
+  //   setSelectedTimeRange(range);
 
-    if (!user) return;
+  //   if (!user) return;
 
-    try {
-      await updateDoc(doc(db, "users", user.uid), {
-        selectedTimeRange: range,
-      });
-    } catch (error) {
-      console.error(error);
-      toast.error("Something went wrong");
-    }
+  //   try {
+  //     await updateDoc(doc(db, "users", user.uid), {
+  //       selectedTimeRange: range,
+  //     });
+  //   } catch (error) {
+  //     console.error(error);
+  //     toast.error("Something went wrong");
+  //   }
+  // };
+
+const updateTimeRange = async (range) => {
+  setSelectedTimeRange(range);
+
+  // Map time range to tick speed (ms) for the shared market
+  const RANGE_MS = {
+    "5M": 5000,
+    "10M": 10000,
+    "15M": 15000,
+    "30M": 30000,
+    "1H": 60000,
   };
+  setTickIntervalMs(RANGE_MS[range] ?? 5000);
 
-  const toggleIndicator = async (indicator) => {
-    if (!user) return;
+  if (!user) return;
 
-    let updatedIndicators;
+  try {
+    await savePreferences(user.uid, { selectedTimeRange: range });
+  } catch (error) {
+    console.error(error);
+    toast.error("Something went wrong");
+  }
+};
 
-    if (selectedIndicators.includes(indicator)) {
-      updatedIndicators = selectedIndicators.filter(
-        (item) => item !== indicator,
-      );
-    } else {
-      updatedIndicators = [...selectedIndicators, indicator];
-    }
+  // const toggleIndicator = async (indicator) => {
+  //   if (!user) return;
 
-    setSelectedIndicators(updatedIndicators);
+  //   let updatedIndicators;
 
-    try {
-      await updateDoc(doc(db, "users", user.uid), {
-        selectedIndicators: updatedIndicators,
-      });
-    } catch (error) {
-      console.error(error);
-      toast.error("Something went wrong");
-    }
-  };
+  //   if (selectedIndicators.includes(indicator)) {
+  //     updatedIndicators = selectedIndicators.filter(
+  //       (item) => item !== indicator,
+  //     );
+  //   } else {
+  //     updatedIndicators = [...selectedIndicators, indicator];
+  //   }
+
+  //   setSelectedIndicators(updatedIndicators);
+
+  //   try {
+  //     await updateDoc(doc(db, "users", user.uid), {
+  //       selectedIndicators: updatedIndicators,
+  //     });
+  //   } catch (error) {
+  //     console.error(error);
+  //     toast.error("Something went wrong");
+  //   }
+  // };
+
+const toggleIndicator = async (indicator) => {
+  if (!user) return;
+
+  const updatedIndicators = selectedIndicators.includes(indicator)
+    ? selectedIndicators.filter((i) => i !== indicator)
+    : [...selectedIndicators, indicator];
+
+  setSelectedIndicators(updatedIndicators);
+
+  try {
+    await savePreferences(user.uid, {
+      selectedIndicators: updatedIndicators,
+    });
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+
 const quantity = Number(buyQuantity) || 0;
   return (
     <div className="bg-gray-900 min-h-screen text-gray-300">
@@ -3083,6 +3323,26 @@ const quantity = Number(buyQuantity) || 0;
 setTradeHistory={setTradeHistory}
           selectedIndicators={selectedIndicators}
           toggleIndicator={toggleIndicator}
+          initialPreferences={{
+    selectedPattern: userData?.preferences?.selectedPattern ?? "All",
+    smaPeriod: userData?.preferences?.smaPeriod ?? 20,
+    emaPeriod: userData?.preferences?.emaPeriod ?? 20,
+    rsiPeriod: userData?.preferences?.rsiPeriod ?? 14,
+    bbPeriod: userData?.preferences?.bbPeriod ?? 20,
+    visibleAnalytics:
+      userData?.preferences?.visibleAnalytics ?? {
+        trend: true,
+        volatility: true,
+        momentum: true,
+        risk: true,
+        insight: true,
+      },
+    strategies: userData?.preferences?.strategies ?? [],
+    customIndicators: userData?.preferences?.customIndicators ?? [],
+  }}
+  onPreferencesChange={(partial) => {
+    if (user) savePreferences(user.uid, partial);
+  }}
         />
         {showBuyModal && (
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">

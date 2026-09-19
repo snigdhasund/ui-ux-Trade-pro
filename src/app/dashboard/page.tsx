@@ -2,6 +2,7 @@
 "use client";
 import { useAuth } from "@/context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
+import { useMarket } from "@/context/MarketContext";
 import { useState, useEffect } from "react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/firebase";
@@ -309,33 +310,14 @@ const TabSection = () => {
   );
 };
 
-const generateRandomChange = (value: number) => {
-  const change = (Math.random() * 2 - 1) * 100;
-  const percentChange = (change / value) * 100;
-  return { change, percentChange };
-};
 
 const MarketIndices = () => {
   const router = useRouter();
-  const [marketData, setMarketData] = useState([
-    { name: "NIFTY50", value: 18245.32, change: 0, percentChange: 0 },
-    { name: "SENSEX", value: 61002.57, change: 0, percentChange: 0 },
-    { name: "BANKNIFTY", value: 43123.45, change: 0, percentChange: 0 },
-  ]);
+  const { getAsset } = useMarket();
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setMarketData((prevData) =>
-        prevData.map((index) => {
-          const { change, percentChange } = generateRandomChange(index.value);
-          const newValue = index.value + change;
-          return { ...index, value: newValue, change, percentChange };
-        }),
-      );
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
+  const indices = ["NIFTY50", "SENSEX", "BANKNIFTY"]
+    .map((id) => getAsset(id))
+    .filter(Boolean);
 
   return (
     <motion.div
@@ -343,36 +325,39 @@ const MarketIndices = () => {
       animate={{ opacity: 1, y: 0 }}
       className="grid grid-cols-1 md:grid-cols-3 gap-4 my-4"
     >
-      {marketData.map((index) => (
+      {indices.map((index) => (
         <motion.div
-          key={index.name}
+          key={index!.id}
           className="bg-gray-800 p-4 rounded-lg shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => router.push(`/dashboard/${index.name}`)}
+          onClick={() => router.push(`/dashboard/${index!.id}`)}
         >
-          <h3 className="font-semibold text-gray-300">{index.name}</h3>
+          <h3 className="font-semibold text-gray-300">{index!.id}</h3>
           <div className="flex items-center space-x-2">
             <span className="text-lg text-white">
-              {index.value.toLocaleString("en-IN", {
+              {index!.currentValue.toLocaleString("en-IN", {
                 style: "currency",
                 currency: "INR",
               })}
             </span>
             <motion.span
-              key={index.change}
+              key={index!.change.value}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className={`text-sm flex items-center ${
-                index.change >= 0 ? "text-green-500" : "text-red-500"
+                index!.change.value >= 0
+                  ? "text-green-500"
+                  : "text-red-500"
               }`}
             >
-              {index.change >= 0 ? (
+              {index!.change.value >= 0 ? (
                 <ArrowUpRight size={16} />
               ) : (
                 <ArrowDownRight size={16} />
               )}
-              {index.change.toFixed(2)} ({index.percentChange.toFixed(2)}%)
+              {index!.change.value.toFixed(2)} (
+              {index!.change.percentage.toFixed(2)}%)
             </motion.span>
           </div>
         </motion.div>
@@ -381,6 +366,7 @@ const MarketIndices = () => {
   );
 };
 
+
 const StockCard = ({
   name,
   initialPrice,
@@ -388,22 +374,12 @@ const StockCard = ({
   name: string;
   initialPrice: number;
 }) => {
-  const [price, setPrice] = useState(initialPrice);
-  const [change, setChange] = useState(0);
-  const [percentChange, setPercentChange] = useState(0);
   const router = useRouter();
+  const { getPrice } = useMarket();
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const { change: randomChange, percentChange: randomPercentChange } =
-        generateRandomChange(price);
-      setPrice((prevPrice) => prevPrice + randomChange);
-      setChange(randomChange);
-      setPercentChange(randomPercentChange);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [price]);
+  const price = getPrice(name) ?? initialPrice;
+  const change = price - initialPrice;
+  const percentChange = (change / initialPrice) * 100;
 
   return (
     <motion.div
@@ -439,7 +415,6 @@ const StockCard = ({
     </motion.div>
   );
 };
-
 const MostBought = () => (
   <motion.div {...fadeInUp} className="my-8">
     <div className="flex justify-between items-center mb-4">
@@ -629,6 +604,117 @@ const MyWatchlist = ({ watchlist }: { watchlist: string[] }) => {
   );
 };
 
+// const MyPortfolio = ({
+//   portfolio,
+//   onSell,
+// }: {
+//   portfolio: any[];
+//   onSell: (stock: any) => void;
+// }) => {
+//   const [livePortfolio, setLivePortfolio] = useState(portfolio);
+
+//   useEffect(() => {
+//     setLivePortfolio(portfolio);
+//   }, [portfolio]);
+
+//   useEffect(() => {
+//     const interval = setInterval(() => {
+//       setLivePortfolio((prev) =>
+//         prev.map((stock) => {
+//           const randomChange = (Math.random() - 0.5) * 100;
+
+//           const newPrice = Math.max(1, stock.currentPrice + randomChange);
+
+//           const portfolioValue = newPrice * stock.quantity;
+
+//           const unrealizedPL = portfolioValue - stock.costBasis;
+
+//           const returnPercentage = (unrealizedPL / stock.costBasis) * 100;
+
+//           return {
+//             ...stock,
+//             currentPrice: newPrice,
+//             portfolioValue,
+//             unrealizedPL,
+//             returnPercentage,
+//           };
+//         }),
+//       );
+//     }, 3000);
+
+//     return () => clearInterval(interval);
+//   }, []);
+//   console.log(livePortfolio);
+//   return (
+//     <motion.div {...fadeInUp} className="my-8">
+//       <h2 className="text-xl font-semibold text-white mb-4">💼 My Portfolio</h2>
+
+//       {livePortfolio.length === 0 ? (
+//         <div className="bg-gray-800 p-6 rounded-lg text-gray-400">
+//           Portfolio is empty.
+//         </div>
+//       ) : (
+//         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+//           {livePortfolio.map((stock, index) => (
+//             <motion.div
+//               key={`${stock.id}-${index}`}
+//               whileHover={{ scale: 1.05 }}
+//               whileTap={{ scale: 0.95 }}
+//               className="bg-gray-800 p-4 rounded-lg shadow-lg"
+//             >
+//               <h3 className="text-white font-semibold">{stock.id}</h3>
+
+//               <p className="text-gray-400 text-sm">Qty : {stock.quantity}</p>
+
+//               <p className="text-gray-400 text-sm">
+//                 Avg Price : ₹{stock.avgPrice}
+//               </p>
+
+//               <p className="text-gray-400 text-sm">
+//                 Current Price : ₹{(stock.currentPrice ?? 0).toFixed(2)}
+//               </p>
+//               <p className="text-gray-400 text-sm">
+//                 Portfolio Value : ₹{(stock.portfolioValue ?? 0).toFixed(2)}
+//               </p>
+//               <p
+//                 className={`text-sm ${
+//                   stock.returnPercentage >= 0
+//                     ? "text-green-400"
+//                     : "text-red-400"
+//                 }`}
+//               >
+//                 Return : {(stock.returnPercentage ?? 0).toFixed(2)}%
+//               </p>
+//               <p className="text-gray-400 text-sm">
+//                 Cost Basis : ₹{(stock.costBasis ?? 0).toFixed(2)}
+//               </p>
+
+//               <p className="text-gray-400 text-sm">
+//                 Transaction Cost : ₹{(stock.transactionCost ?? 0).toFixed(2)}
+//               </p>
+//               <p className="text-gray-400 text-sm">
+//                 Unrealized P/L : ₹{(stock.unrealizedPL ?? 0).toFixed(2)}
+//               </p>
+//               <p
+//                 className={`text-sm ${
+//                   stock.realizedPL >= 0 ? "text-green-400" : "text-red-400"
+//                 }`}
+//               >
+//                 Realized P/L : ₹{(stock.realizedPL ?? 0).toFixed(2)}
+//               </p>
+//               <motion.button
+//                 onClick={() => onSell(stock)}
+//                 className="mt-3 w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg"
+//               >
+//                 Sell Stock
+//               </motion.button>
+//             </motion.div>
+//           ))}
+//         </div>
+//       )}
+//     </motion.div>
+//   );
+// };
 const MyPortfolio = ({
   portfolio,
   onSell,
@@ -636,43 +722,35 @@ const MyPortfolio = ({
   portfolio: any[];
   onSell: (stock: any) => void;
 }) => {
-  const [livePortfolio, setLivePortfolio] = useState(portfolio);
+  const { getPrice } = useMarket();
 
-  useEffect(() => {
-    setLivePortfolio(portfolio);
-  }, [portfolio]);
+  const livePortfolio = portfolio.map((stock) => {
+    const currentPrice =
+      getPrice(stock.id) ?? stock.currentPrice ?? stock.avgPrice;
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLivePortfolio((prev) =>
-        prev.map((stock) => {
-          const randomChange = (Math.random() - 0.5) * 100;
+    const portfolioValue = currentPrice * stock.quantity;
+    const costBasis =
+      stock.costBasis ?? stock.avgPrice * stock.quantity;
+    const unrealizedPL = portfolioValue - costBasis;
+    const returnPercentage = costBasis
+      ? (unrealizedPL / costBasis) * 100
+      : 0;
 
-          const newPrice = Math.max(1, stock.currentPrice + randomChange);
+    return {
+      ...stock,
+      currentPrice,
+      portfolioValue,
+      costBasis,
+      unrealizedPL,
+      returnPercentage,
+    };
+  });
 
-          const portfolioValue = newPrice * stock.quantity;
-
-          const unrealizedPL = portfolioValue - stock.costBasis;
-
-          const returnPercentage = (unrealizedPL / stock.costBasis) * 100;
-
-          return {
-            ...stock,
-            currentPrice: newPrice,
-            portfolioValue,
-            unrealizedPL,
-            returnPercentage,
-          };
-        }),
-      );
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, []);
-  console.log(livePortfolio);
   return (
     <motion.div {...fadeInUp} className="my-8">
-      <h2 className="text-xl font-semibold text-white mb-4">💼 My Portfolio</h2>
+      <h2 className="text-xl font-semibold text-white mb-4">
+        💼 My Portfolio
+      </h2>
 
       {livePortfolio.length === 0 ? (
         <div className="bg-gray-800 p-6 rounded-lg text-gray-400">
@@ -688,13 +766,10 @@ const MyPortfolio = ({
               className="bg-gray-800 p-4 rounded-lg shadow-lg"
             >
               <h3 className="text-white font-semibold">{stock.id}</h3>
-
               <p className="text-gray-400 text-sm">Qty : {stock.quantity}</p>
-
               <p className="text-gray-400 text-sm">
                 Avg Price : ₹{stock.avgPrice}
               </p>
-
               <p className="text-gray-400 text-sm">
                 Current Price : ₹{(stock.currentPrice ?? 0).toFixed(2)}
               </p>
@@ -713,9 +788,9 @@ const MyPortfolio = ({
               <p className="text-gray-400 text-sm">
                 Cost Basis : ₹{(stock.costBasis ?? 0).toFixed(2)}
               </p>
-
               <p className="text-gray-400 text-sm">
-                Transaction Cost : ₹{(stock.transactionCost ?? 0).toFixed(2)}
+                Transaction Cost : ₹
+                {(stock.transactionCost ?? 0).toFixed(2)}
               </p>
               <p className="text-gray-400 text-sm">
                 Unrealized P/L : ₹{(stock.unrealizedPL ?? 0).toFixed(2)}
