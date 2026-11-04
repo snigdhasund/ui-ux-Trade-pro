@@ -140,8 +140,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       portfolio: data.portfolio ?? [],
       tradeHistory: data.tradeHistory ?? [],
       transactions: data.transactions ?? [],
+      realizedPL: data.realizedPL ?? 0,
+      notifications: data.notifications ?? [],
       preferences,
-    };
+    } as any;
   };
 
   useEffect(() => {

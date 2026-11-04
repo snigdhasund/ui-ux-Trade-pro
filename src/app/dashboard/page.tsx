@@ -1,6 +1,7 @@
 //dashboard/page.tsx
 "use client";
 import { useAuth } from "@/context/AuthContext";
+import NotificationBell from "@/components/NotificationBell";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMarket } from "@/context/MarketContext";
 import { useState, useEffect } from "react";
@@ -9,6 +10,8 @@ import { auth } from "@/firebase";
 import { db } from "@/firebase";
 import { doc, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import PortfolioAnalytics from "@/components/ui/PortfolioAnalytics";
+import { addNotification } from "@/utils/notifications";
+import SearchBar from "@/components/SearchBar";
 import {
   Search,
   Bell,
@@ -26,8 +29,6 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Zap,
-  Globe,
-  BookOpen,
   Gift,
   HelpCircle,
   Settings,
@@ -64,67 +65,27 @@ const Header = () => {
         >
           TradePro
         </motion.span>
-        <nav className="hidden md:block">
-          <ul className="flex space-x-4">
-            <li>
-              <a
-                href="/"
-                className="text-blue-500 font-semibold flex items-center"
-              >
-                <Zap className="mr-1" size={16} />
-                Explore
-              </a>
-            </li>
-            <li>
-              <a
-                href="/"
-                className="text-gray-300 hover:text-blue-500 transition-colors flex items-center"
-              >
-                <Globe className="mr-1" size={16} />
-                Investments
-              </a>
-            </li>
-            <li>
-              <a
-                href="/"
-                className="text-gray-300 hover:text-blue-500 transition-colors flex items-center"
-              >
-                <BookOpen className="mr-1" size={16} />
-                Learn
-              </a>
-            </li>
-          </ul>
-        </nav>
+        
+<nav className="hidden md:block">
+  <ul className="flex space-x-4">
+    <li>
+      <a
+        href="/dashboard"
+        className="text-blue-500 font-semibold flex items-center"
+      >
+        <Zap className="mr-1" size={16} />
+        Explore
+      </a>
+    </li>
+  </ul>
+</nav>
+
+
       </div>
       <div className="hidden md:flex items-center space-x-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="What are you looking for today?"
-            className="pl-10 pr-4 py-2 bg-gray-800 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <motion.div
-          className="relative cursor-pointer"
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-        >
-          <Bell className="text-gray-300 hover:text-blue-500 transition-colors" />
-          {notifications > 0 && (
-            <motion.span
-              className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 500, damping: 30 }}
-            >
-              {notifications}
-            </motion.span>
-          )}
-        </motion.div>
-        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-          <ShoppingCart className="text-gray-300 hover:text-blue-500 cursor-pointer transition-colors" />
-        </motion.div>
+        <SearchBar />
+        <NotificationBell />
+        
         <div className="relative">
           <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
             <User
@@ -184,68 +145,48 @@ const Header = () => {
     className="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-700 text-white focus:outline-none"
   />
 </div>
-              <ul className="space-y-4">
-                <li>
-                  <a
-                    href="#"
-                    className="text-blue-500 font-semibold flex items-center"
-                     onClick={() => setIsMenuOpen(false)}
-                  >
-                    <Zap className="mr-2" size={16} />
-                    Explore
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-gray-300 hover:text-blue-500 transition-colors flex items-center"
-                     onClick={() => setIsMenuOpen(false)}
-                  >
-                    <Globe className="mr-2" size={16} />
-                    Investments
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-gray-300 hover:text-blue-500 transition-colors flex items-center"
-                     onClick={() => setIsMenuOpen(false)}
-                  >
-                    <BookOpen className="mr-2" size={16} />
-                    Learn
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-gray-300 hover:text-blue-500 transition-colors flex items-center"
-                     onClick={() => setIsMenuOpen(false)}
-                  >
-                    <Gift className="mr-2" size={16} />
-                    Rewards
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-gray-300 hover:text-blue-500 transition-colors flex items-center"
-                     onClick={() => setIsMenuOpen(false)}
-                  >
-                    <HelpCircle className="mr-2" size={16} />
-                    Support
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-gray-300 hover:text-blue-500 transition-colors flex items-center"
-                     onClick={() => setIsMenuOpen(false)}
-                  >
-                    <Settings className="mr-2" size={16} />
-                    Settings
-                  </a>
-                </li>
-              </ul>
+          <ul className="space-y-4">
+  <li>
+    <a
+      href="/dashboard"
+      className="text-blue-500 font-semibold flex items-center"
+      onClick={() => setIsMenuOpen(false)}
+    >
+      <Zap className="mr-2" size={16} />
+      Explore
+    </a>
+  </li>
+  <li>
+    <a
+      href="#"
+      className="text-gray-300 hover:text-blue-500 transition-colors flex items-center"
+      onClick={() => setIsMenuOpen(false)}
+    >
+      <Gift className="mr-2" size={16} />
+      Rewards
+    </a>
+  </li>
+  <li>
+    <a
+      href="#"
+      className="text-gray-300 hover:text-blue-500 transition-colors flex items-center"
+      onClick={() => setIsMenuOpen(false)}
+    >
+      <HelpCircle className="mr-2" size={16} />
+      Support
+    </a>
+  </li>
+  <li>
+    <a
+      href="#"
+      className="text-gray-300 hover:text-blue-500 transition-colors flex items-center"
+      onClick={() => setIsMenuOpen(false)}
+    >
+      <Settings className="mr-2" size={16} />
+      Settings
+    </a>
+  </li>
+</ul>    
             </nav>
 
             <div className="border-t border-gray-700 mt-6 pt-6 space-y-4">
@@ -260,10 +201,7 @@ const Header = () => {
     )}
   </button>
 
-  <button className="flex items-center gap-3 text-gray-300 hover:text-blue-500 w-full">
-    <ShoppingCart size={18} />
-    Cart
-  </button>
+  
 
   <button
     onClick={handleLogout}
@@ -282,28 +220,15 @@ const Header = () => {
 };
 
 const TabSection = () => {
-  const [activeTab, setActiveTab] = useState("Stocks");
   return (
     <motion.div {...fadeInUp} className="border-b border-gray-700">
       <div className="container mx-auto px-4">
         <ul className="flex space-x-8 overflow-x-auto">
-          {["Stocks", "Mutual Funds", "ETFs", "Options", "Futures"].map(
-            (tab) => (
-              <motion.li
-                key={tab}
-                className={`py-2 cursor-pointer whitespace-nowrap ${
-                  activeTab === tab
-                    ? "border-b-2 border-blue-500 text-blue-500"
-                    : "text-gray-300 hover:text-blue-500 transition-colors"
-                }`}
-                onClick={() => setActiveTab(tab)}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                {tab}
-              </motion.li>
-            ),
-          )}
+          <motion.li
+            className="py-2 cursor-default whitespace-nowrap border-b-2 border-blue-500 text-blue-500"
+          >
+            Stocks
+          </motion.li>
         </ul>
       </div>
     </motion.div>
@@ -328,7 +253,7 @@ const MarketIndices = () => {
       {indices.map((index) => (
         <motion.div
           key={index!.id}
-          className="bg-gray-800 p-4 rounded-lg shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
+className="bg-gradient-to-br from-blue-900 to-gray-800 border border-blue-700 p-4 rounded-lg shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => router.push(`/dashboard/${index!.id}`)}
@@ -388,7 +313,9 @@ const StockCard = ({
       whileTap={{ scale: 0.95 }}
       onClick={() => router.push(`/dashboard/${name}`)}
     >
-      <h3 className="font-semibold text-white mb-2">{name}</h3>
+      <h3 className="font-semibold text-white mb-2">
+        {name.replace(/([a-z])([A-Z])/g, "$1 $2")}
+      </h3>
       <div className="flex items-center justify-between">
         <span className="text-lg text-white">
           {price.toLocaleString("en-IN", {
@@ -432,21 +359,23 @@ const MostBought = () => (
       </motion.a>
     </div>
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <StockCard name="Reliance" initialPrice={2345.6} />
-      <StockCard name="Tata Motors" initialPrice={456.75} />
-      <StockCard name="Suzlon Energy" initialPrice={18.45} />
-      <StockCard name="Zomato" initialPrice={82.3} />
+      <StockCard name="Reliance" initialPrice={2950} />
+      <StockCard name="TataMotors" initialPrice={780} />
+      <StockCard name="SuzlonEnergy" initialPrice={68} />
+      <StockCard name="Zomato" initialPrice={285} />
     </div>
   </motion.div>
 );
 
 const ProductsAndTools = () => {
+  const router = useRouter();
+
   const products = [
-    { name: "F&O", icon: BarChart2 },
-    { name: "IPO", icon: DollarSign },
-    { name: "ETFs", icon: PieChart },
-    { name: "FDs", icon: TrendingUp },
-    { name: "US Stocks", icon: Activity },
+    { name: "F&O", icon: BarChart2, path: "/fno" },
+    { name: "IPO", icon: DollarSign, path: "/ipo" },
+    { name: "ETFs", icon: PieChart, path: "/etfs" },
+    { name: "FDs", icon: TrendingUp, path: "/fds" },
+    { name: "US Stocks", icon: Activity, path: "/us-stocks" },
   ];
 
   return (
@@ -458,6 +387,7 @@ const ProductsAndTools = () => {
         {products.map((product) => (
           <motion.div
             key={product.name}
+            onClick={() => router.push(product.path)}
             className="bg-gray-800 p-4 rounded-lg shadow-lg hover:shadow-xl transition-shadow text-center cursor-pointer"
             whileHover={{ scale: 1.05, backgroundColor: "#2D3748" }}
             whileTap={{ scale: 0.95 }}
@@ -492,10 +422,10 @@ const TopGainers = () => (
       </motion.a>
     </div>
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <StockCard name="TCS" initialPrice={845.6} />
-      <StockCard name="HDFC" initialPrice={135.6} />
-      <StockCard name="ICICI" initialPrice={345.6} />
-      <StockCard name="Airtel" initialPrice={535.6} />
+      <StockCard name="TCS" initialPrice={4100} />
+      <StockCard name="HDFC" initialPrice={1680} />
+      <StockCard name="ICICI" initialPrice={1260} />
+      <StockCard name="Airtel" initialPrice={1650} />
     </div>
   </motion.div>
 );
@@ -768,8 +698,8 @@ const MyPortfolio = ({
               <h3 className="text-white font-semibold">{stock.id}</h3>
               <p className="text-gray-400 text-sm">Qty : {stock.quantity}</p>
               <p className="text-gray-400 text-sm">
-                Avg Price : ₹{stock.avgPrice}
-              </p>
+  Avg Price : ₹{Number(stock.avgPrice).toFixed(2)}
+</p>
               <p className="text-gray-400 text-sm">
                 Current Price : ₹{(stock.currentPrice ?? 0).toFixed(2)}
               </p>
@@ -936,113 +866,217 @@ const TransactionHistory = ({ transactions }: { transactions: any[] }) => {
 
 export default function EnhancedTradeProDashboard() {
   const { user, loading } = useAuth();
+  const { getPrice } = useMarket();
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [portfolio, setPortfolio] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [showSellModal, setShowSellModal] = useState(false);
-
+  const [realizedPL, setRealizedPL] = useState(0);
   const [selectedStock, setSelectedStock] = useState<any>(null);
 
   const [sellQuantity, setSellQuantity] = useState(1);
-  const openSellModal = (stock: any) => {
-    setSelectedStock(stock);
-    setSellQuantity(1);
-    setShowSellModal(true);
-  };
+  // const openSellModal = (stock: any) => {
+  //   setSelectedStock(stock);
+  //   setSellQuantity(1);
+  //   setShowSellModal(true);
+  // };
+const openSellModal = (stock: any) => {
+  const livePrice =
+    getPrice(stock.id) ?? stock.currentPrice ?? stock.avgPrice;
+  setSelectedStock({ ...stock, currentPrice: livePrice });
+  setSellQuantity(1);
+  setShowSellModal(true);
+};
+  // const confirmSell = async () => {
+  //   if (!user || !selectedStock) return;
 
+  //   try {
+  //     let transaction: any = null;
+  //     const updatedPortfolio = portfolio.reduce((acc: any[], stock) => {
+  //       if (stock.id !== selectedStock.id) {
+  //         acc.push(stock);
+  //         return acc;
+  //       }
+
+  //       const remainingQty = stock.quantity - sellQuantity;
+
+  //       const sellAmount = selectedStock.currentPrice * sellQuantity;
+  //       const avgBuyPrice = stock.avgPrice * sellQuantity;
+
+  //       const realizedPL =
+  //         sellAmount -
+  //         avgBuyPrice -
+  //         selectedStock.currentPrice * sellQuantity * 0.005;
+
+  //       const transactionFee =
+  //         selectedStock.currentPrice * sellQuantity * 0.005;
+
+  //       transaction = {
+  //         type: "SELL",
+  //         stock: stock.id,
+  //         quantity: sellQuantity,
+  //         price: selectedStock.currentPrice,
+  //         fee: transactionFee,
+  //         total: sellAmount - transactionFee,
+  //         realizedPL,
+  //         date: new Date().toISOString(),
+  //       };
+
+  //       if (remainingQty > 0) {
+  //         const transactionCost =
+  //           selectedStock.currentPrice * remainingQty * 0.005;
+
+  //         const costBasis = stock.avgPrice * remainingQty + transactionCost;
+
+  //         const portfolioValue = selectedStock.currentPrice * remainingQty;
+
+  //         const unrealizedPL = portfolioValue - costBasis;
+
+  //         const returnPercentage = (unrealizedPL / costBasis) * 100;
+
+  //         acc.push({
+  //           ...stock,
+
+  //           quantity: remainingQty,
+
+  //           transactionCost,
+
+  //           costBasis,
+
+  //           portfolioValue,
+
+  //           unrealizedPL,
+
+  //           returnPercentage,
+
+  //           realizedPL: (stock.realizedPL || 0) + realizedPL,
+  //         });
+  //       }
+
+  //       return acc;
+  //     }, []);
+
+  //     if (transaction) {
+  //       await updateDoc(doc(db, "users", user.uid), {
+  //         portfolio: updatedPortfolio,
+  //         transactions: arrayUnion(transaction),
+  //       });
+  //     } else {
+  //       await updateDoc(doc(db, "users", user.uid), {
+  //         portfolio: updatedPortfolio,
+  //       });
+  //     }
+
+  //     setPortfolio(updatedPortfolio);
+  //     setTransactions((prev) => [...prev, transaction]);
+  //     toast.success(`Sold ${sellQuantity} share(s) of ${selectedStock.id}`);
+
+  //     setShowSellModal(false);
+
+  //     setSelectedStock(null);
+
+  //     setSellQuantity(1);
+  //   } catch (error) {
+  //     console.error(error);
+  //   }
+  // };
+  
   const confirmSell = async () => {
-    if (!user || !selectedStock) return;
+  if (!user || !selectedStock) return;
 
-    try {
-      let transaction: any = null;
-      const updatedPortfolio = portfolio.reduce((acc: any[], stock) => {
-        if (stock.id !== selectedStock.id) {
-          acc.push(stock);
-          return acc;
-        }
+  try {
+    const livePrice =
+      getPrice(selectedStock.id) ??
+      selectedStock.currentPrice ??
+      selectedStock.avgPrice;
 
-        const remainingQty = stock.quantity - sellQuantity;
-
-        const sellAmount = selectedStock.currentPrice * sellQuantity;
-        const avgBuyPrice = stock.avgPrice * sellQuantity;
-
-        const realizedPL =
-          sellAmount -
-          avgBuyPrice -
-          selectedStock.currentPrice * sellQuantity * 0.005;
-
-        const transactionFee =
-          selectedStock.currentPrice * sellQuantity * 0.005;
-
-        transaction = {
-          type: "SELL",
-          stock: stock.id,
-          quantity: sellQuantity,
-          price: selectedStock.currentPrice,
-          fee: transactionFee,
-          total: sellAmount - transactionFee,
-          realizedPL,
-          date: new Date().toISOString(),
-        };
-
-        if (remainingQty > 0) {
-          const transactionCost =
-            selectedStock.currentPrice * remainingQty * 0.005;
-
-          const costBasis = stock.avgPrice * remainingQty + transactionCost;
-
-          const portfolioValue = selectedStock.currentPrice * remainingQty;
-
-          const unrealizedPL = portfolioValue - costBasis;
-
-          const returnPercentage = (unrealizedPL / costBasis) * 100;
-
-          acc.push({
-            ...stock,
-
-            quantity: remainingQty,
-
-            transactionCost,
-
-            costBasis,
-
-            portfolioValue,
-
-            unrealizedPL,
-
-            returnPercentage,
-
-            realizedPL: (stock.realizedPL || 0) + realizedPL,
-          });
-        }
-
+    let transaction: any = null;
+    const updatedPortfolio = portfolio.reduce((acc: any[], stock) => {
+      if (stock.id !== selectedStock.id) {
+        acc.push(stock);
         return acc;
-      }, []);
-
-      if (transaction) {
-        await updateDoc(doc(db, "users", user.uid), {
-          portfolio: updatedPortfolio,
-          transactions: arrayUnion(transaction),
-        });
-      } else {
-        await updateDoc(doc(db, "users", user.uid), {
-          portfolio: updatedPortfolio,
-        });
       }
 
-      setPortfolio(updatedPortfolio);
-      setTransactions((prev) => [...prev, transaction]);
-      toast.success(`Sold ${sellQuantity} share(s) of ${selectedStock.id}`);
+      const remainingQty = stock.quantity - sellQuantity;
+      const sellAmount = livePrice * sellQuantity;
+      const avgBuyPrice = stock.avgPrice * sellQuantity;
+      const transactionFee = livePrice * sellQuantity * 0.005;
+      const realizedPL = sellAmount - avgBuyPrice - transactionFee;
 
-      setShowSellModal(false);
+      transaction = {
+        type: "SELL",
+        stock: stock.id,
+        quantity: sellQuantity,
+        price: livePrice,
+        fee: transactionFee,
+        total: sellAmount - transactionFee,
+        realizedPL,
+        date: new Date().toISOString(),
+      };
 
-      setSelectedStock(null);
+      if (remainingQty > 0) {
+        const transactionCost = livePrice * remainingQty * 0.005;
+        const costBasis = stock.avgPrice * remainingQty + transactionCost;
+        const portfolioValue = livePrice * remainingQty;
+        const unrealizedPL = portfolioValue - costBasis;
+        const returnPercentage = costBasis
+          ? (unrealizedPL / costBasis) * 100
+          : 0;
 
-      setSellQuantity(1);
-    } catch (error) {
-      console.error(error);
+        acc.push({
+          ...stock,
+          quantity: remainingQty,
+          currentPrice: livePrice,
+          transactionCost,
+          costBasis,
+          portfolioValue,
+          unrealizedPL,
+          returnPercentage,
+          realizedPL: (stock.realizedPL || 0) + realizedPL,
+        });
+      }
+      return acc;
+    }, []);
+
+      if (transaction) {
+      // Accumulate realized P/L into a single field (never resets)
+      const newRealizedPL = realizedPL + (transaction.realizedPL || 0);
+
+      await updateDoc(doc(db, "users", user.uid), {
+        portfolio: updatedPortfolio,
+        transactions: arrayUnion(transaction),
+        realizedPL: newRealizedPL,
+      });
+
+      setRealizedPL(newRealizedPL);
+    } else {
+      await updateDoc(doc(db, "users", user.uid), {
+        portfolio: updatedPortfolio,
+      });
     }
-  };
+
+    setPortfolio(updatedPortfolio);
+    setTransactions((prev) => [...prev, transaction]);
+    toast.success(`Sold ${sellQuantity} × ${selectedStock.id}`);
+
+    // Save notification
+    if (transaction) {
+      await addNotification(user.uid, {
+        type: "SELL",
+        title: `Sold ${selectedStock.id}`,
+        message: `${sellQuantity} share(s) @ ₹${transaction.price.toFixed(
+          2
+        )} · Total ₹${(transaction.price * sellQuantity).toFixed(2)}`,
+      });
+    }
+
+    setShowSellModal(false);
+    setSelectedStock(null);
+    setSellQuantity(1);
+  } catch (error) {
+    console.error(error);
+  }
+};
   const router = useRouter();
 
   useEffect(() => {
@@ -1052,29 +1086,40 @@ export default function EnhancedTradeProDashboard() {
   }, [loading, user, router]);
 
   useEffect(() => {
-    const fetchWatchlist = async () => {
-      if (!user) return;
+  const fetchWatchlist = async () => {
+    if (!user) return;
 
-      try {
-        const docRef = doc(db, "users", user.uid);
-        const docSnap = await getDoc(docRef);
+    try {
+      const docRef = doc(db, "users", user.uid);
+      const docSnap = await getDoc(docRef);
 
-        if (docSnap.exists()) {
-          const data = docSnap.data();
+      if (docSnap.exists()) {
+        const data = docSnap.data();
 
-          console.log("Portfolio:", data.portfolio);
+        // Use `tradeHistory` as fallback if `transactions` is missing
+        const tx = data.transactions || data.tradeHistory || [];
 
-          setWatchlist(data.watchlist || []);
-          setPortfolio(data.portfolio || []);
-          setTransactions(data.transactions || []);
-        }
-      } catch (error) {
-        console.error(error);
+        setWatchlist(data.watchlist || []);
+        setPortfolio(data.portfolio || []);
+        setTransactions(tx);
+        setRealizedPL(data.realizedPL || 0);
       }
-    };
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
-    fetchWatchlist();
-  }, [user]);
+  fetchWatchlist();
+
+  // Re-fetch on window focus + every 5 seconds while page is open
+  const interval = setInterval(fetchWatchlist, 5000);
+  window.addEventListener("focus", fetchWatchlist);
+
+  return () => {
+    clearInterval(interval);
+    window.removeEventListener("focus", fetchWatchlist);
+  };
+}, [user]);
 
   if (loading) {
     return (
@@ -1090,13 +1135,17 @@ export default function EnhancedTradeProDashboard() {
     <div className="bg-gray-900 min-h-screen text-gray-300 overflow-x-hidden">
       <Header />
 
-      <main className="container mx-auto px-3 sm:px-4 md:px-6">
+      <main className="container mx-auto px-4 sm:px-6 md:px-8 max-w-7xl">
         <TabSection />
-        <MarketIndices />
-        <MostBought />
+        <h2 className="text-xl font-semibold text-white mt-6 mb-2">
+  📈 Market Indices
+</h2>
+<MarketIndices />
+
+<MostBought />
         <MyWatchlist watchlist={watchlist} />
         <MyPortfolio portfolio={portfolio} onSell={openSellModal} />
-        <PortfolioAnalytics portfolio={portfolio} />
+        <PortfolioAnalytics portfolio={portfolio} realizedPL={realizedPL} />
         <TransactionHistory transactions={transactions} />
         <ProductsAndTools />
         <TopGainers />
@@ -1123,7 +1172,7 @@ export default function EnhancedTradeProDashboard() {
               className="w-full mt-2 mb-4 p-2 rounded bg-gray-700"
             />
 
-            <p>Current Price : ₹{selectedStock.currentPrice.toFixed(2)}</p>
+            {/* <p>Current Price : ₹{selectedStock.currentPrice.toFixed(2)}</p>
 
             <p>
               Sell Value : ₹
@@ -1133,7 +1182,28 @@ export default function EnhancedTradeProDashboard() {
             <p>
               Transaction Fee : ₹
               {(selectedStock.currentPrice * sellQuantity * 0.005).toFixed(2)}
-            </p>
+            </p> */}
+
+            {(() => {
+  const livePrice =
+    getPrice(selectedStock.id) ??
+    selectedStock.currentPrice ??
+    selectedStock.avgPrice;
+  return (
+    <>
+      <p>Current Price : ₹{livePrice.toFixed(2)}</p>
+      <p>Sell Value : ₹{(livePrice * sellQuantity).toFixed(2)}</p>
+      <p>
+        Transaction Fee : ₹
+        {(livePrice * sellQuantity * 0.005).toFixed(2)}
+      </p>
+      <p className="font-bold">
+        Net Proceeds : ₹
+        {(livePrice * sellQuantity - livePrice * sellQuantity * 0.005).toFixed(2)}
+      </p>
+    </>
+  );
+})()}
 
             <div className="flex gap-3 mt-5">
               <button

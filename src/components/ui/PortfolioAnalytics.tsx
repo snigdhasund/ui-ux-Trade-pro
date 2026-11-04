@@ -7,6 +7,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { useMarket } from "@/context/MarketContext";
 type PortfolioItem = {
   id: string;
   costBasis: number;
@@ -16,18 +17,32 @@ type PortfolioItem = {
 
 interface Props {
   portfolio: PortfolioItem[];
+  realizedPL?: number;
 }
 
-export default function PortfolioAnalytics({ portfolio }: Props) {
-  // Total amount invested
+export default function PortfolioAnalytics({ portfolio, realizedPL = 0 }: Props) {
+  const { getPrice } = useMarket();
+
+  // Total amount invested (static — historic)
   const totalInvestment = portfolio.reduce(
     (sum, stock) => sum + (stock.costBasis || 0),
     0
   );
 
-  // Current portfolio value
-  const currentValue = portfolio.reduce(
-    (sum, stock) => sum + (stock.portfolioValue || 0),
+  // Current portfolio value — compute from LIVE prices
+  const liveValues = portfolio.map((stock: any) => {
+    const livePrice =
+      getPrice(stock.id) ?? stock.currentPrice ?? stock.avgPrice ?? 0;
+    const qty = stock.quantity || 1;
+    return {
+      ...stock,
+      livePrice,
+      liveValue: livePrice * qty,
+    };
+  });
+
+  const currentValue = liveValues.reduce(
+    (sum, stock) => sum + stock.liveValue,
     0
   );
 
@@ -40,9 +55,9 @@ export default function PortfolioAnalytics({ portfolio }: Props) {
       ? (totalPL / totalInvestment) * 100
       : 0;
 
-const pieData = portfolio.map((stock) => ({
+const pieData = liveValues.map((stock) => ({
   name: stock.id,
-  value: stock.portfolioValue ?? 0,
+  value: stock.liveValue ?? 0,
 }));
 const COLORS = [
   "#3B82F6",
@@ -98,7 +113,7 @@ const diversificationScore =
         📊 Portfolio Analytics
       </h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
 
         <div className="bg-gray-700 rounded-lg p-4 min-h-[100px]">
           <p className="text-gray-400 text-sm">Total Investment</p>
@@ -137,7 +152,17 @@ const diversificationScore =
             {returnPercentage.toFixed(2)}%
           </h3>
         </div>
-
+        <div className="bg-gray-700 rounded-lg p-4 min-h-[100px]">
+          <p className="text-gray-400 text-sm">Realized P/L</p>
+         <h3
+  className={`text-xl font-bold ${
+    realizedPL >= 0 ? "text-green-400" : "text-red-400"
+  }`}
+>
+  {realizedPL >= 0 ? "+" : "-"}₹{Math.abs(realizedPL).toFixed(2)}
+</h3>
+          <p className="text-xs text-gray-500 mt-1">From closed trades</p>
+        </div>
       </div>
       <div className="mt-10">
   <h3 className="text-lg sm:text-xl font-semibold text-white mb-6">
@@ -191,11 +216,11 @@ const diversificationScore =
 
     <div className="space-y-3">
 
-      {portfolio.map((stock, index) => {
+      {liveValues.map((stock, index) => {
 
         const allocation =
           currentValue > 0
-            ? (stock.portfolioValue / currentValue) * 100
+            ? (stock.liveValue / currentValue) * 100
             : 0;
 
         return (
@@ -231,7 +256,7 @@ const diversificationScore =
             <div className="text-right">
 
               <p className="text-white font-semibold text-right break-all">
-                ₹{(stock.portfolioValue ?? 0).toFixed(2)}
+                ₹{(stock.liveValue ?? 0).toFixed(2)}
               </p>
 
             </div>

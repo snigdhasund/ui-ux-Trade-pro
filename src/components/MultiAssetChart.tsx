@@ -13,16 +13,6 @@ type Asset = {
   data: { date: Date; open: number; high: number; low: number; close: number }[];
 };
 
-type Props = {
-  assets: Asset[];
-  patterns: any[];
-  selectedPattern: string;
-  selectedIndicators?: string[];
-  smaData?: (number | null)[];
-  emaData?: (number | null)[];
-  bollingerData?: { upper: number | null; middle: number | null; lower: number | null }[];
-  customIndicatorData?: { id: string; name: string; color: string; values: (number | null)[] }[];
-};
 
 const PATTERN_INFO: Record<
   string,
@@ -58,6 +48,18 @@ const PATTERN_INFO: Record<
   },
 };
 
+type Props = {
+  assets: Asset[];
+  patterns: any[];
+  selectedPattern: string;
+  selectedIndicators?: string[];
+  smaData?: (number | null)[];
+  emaData?: (number | null)[];
+  bollingerData?: { upper: number | null; middle: number | null; lower: number | null }[];
+  customIndicatorData?: { id: string; name: string; color: string; values: (number | null)[] }[];
+  normalized?: boolean;
+};
+
 export default function MultiAssetChart({
   assets,
   patterns,
@@ -67,7 +69,19 @@ export default function MultiAssetChart({
   emaData = [],
   bollingerData = [],
   customIndicatorData = [],
+  normalized = false,
 }: Props) {
+
+// export default function MultiAssetChart({
+//   assets,
+//   patterns,
+//   selectedPattern,
+//   selectedIndicators = [],
+//   smaData = [],
+//   emaData = [],
+//   bollingerData = [],
+//   customIndicatorData = [],
+// }: Props) {
   const visibleAssets = useMemo(() => assets.filter((a) => a.visible), [assets]);
 
   const minLen = useMemo(() => {
@@ -150,6 +164,17 @@ export default function MultiAssetChart({
     visibleAssets.forEach((asset) => {
       const slice = asset.data.slice(-minLen);
 
+      // ---- Normalization: convert prices to % change from first candle ----
+      const firstClose = slice[0]?.close ?? 1;
+      const toVal = (v: number) =>
+        normalized ? Number((((v - firstClose) / firstClose) * 100).toFixed(3)) : v;
+      const toCandle = (d: any) => [
+        toVal(d.open),
+        toVal(d.close),
+        toVal(d.low),
+        toVal(d.high),
+      ];
+
       if (asset.chartType === "candlestick") {
         const isFirstCandle =
           candlestickAsset && asset.id === candlestickAsset.id;
@@ -157,7 +182,8 @@ export default function MultiAssetChart({
         out.push({
           name: asset.id,
           type: "candlestick",
-          data: slice.map((d) => [d.open, d.close, d.low, d.high]),
+          // data: slice.map((d) => [d.open, d.close, d.low, d.high]),
+          data: slice.map((d) => toCandle(d)),
           itemStyle: {
             color: "#22c55e",
             color0: "#ef4444",
@@ -172,7 +198,8 @@ export default function MultiAssetChart({
         out.push({
           name: asset.id,
           type: "bar",
-          data: slice.map((d) => d.close),
+          // data: slice.map((d) => d.close),
+          data: slice.map((d) => toVal(d.close)),
           itemStyle: { color: asset.color },
           yAxisIndex: 0,
         });
@@ -180,7 +207,8 @@ export default function MultiAssetChart({
         out.push({
           name: asset.id,
           type: "line",
-          data: slice.map((d) => d.close),
+          // data: slice.map((d) => d.close),
+          data: slice.map((d) => toVal(d.close)),
           smooth: true,
           showSymbol: false,
           lineStyle: { width: 2, color: asset.color },
@@ -277,6 +305,7 @@ if (customIndicatorData.length > 0 && visibleAssets.length > 0) {
     candlestickAsset,
     patternMarkers,
     customIndicatorData,
+    normalized,
   ]);
 
   const option = {
@@ -347,11 +376,20 @@ if (customIndicatorData.length > 0 && visibleAssets.length > 0) {
       axisLine: { lineStyle: { color: "#9CA3AF" } },
       axisLabel: { color: "#9CA3AF", hideOverlap: true, fontSize: 11 },
     },
-    yAxis: {
+    // yAxis: {
+    //   scale: true,
+    //   axisLine: { lineStyle: { color: "#9CA3AF" } },
+    //   splitLine: { lineStyle: { color: "#374151" } },
+    //   axisLabel: { color: "#9CA3AF" },
+    // },
+        yAxis: {
       scale: true,
       axisLine: { lineStyle: { color: "#9CA3AF" } },
       splitLine: { lineStyle: { color: "#374151" } },
-      axisLabel: { color: "#9CA3AF" },
+      axisLabel: {
+        color: "#9CA3AF",
+        formatter: normalized ? (v: number) => `${v}%` : (v: number) => v,
+      },
     },
     series,
   };

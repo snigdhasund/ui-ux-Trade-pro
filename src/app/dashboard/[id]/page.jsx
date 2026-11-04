@@ -4,9 +4,13 @@ import CustomIndicatorBuilder from "@/components/CustomIndicatorBuilder";
 import StrategyPerformance from "@/components/StrategyPerformance";
 import { evaluateCustomIndicator } from "@/utils/customIndicators";
 import { savePreferences } from "@/utils/preferences";
+import { addNotification } from "@/utils/notifications";
 import { useMarket } from "@/context/MarketContext";
 import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 import MultiAssetChart from "@/components/MultiAssetChart";
+import SearchBar from "@/components/SearchBar";
+import NotificationBell from "@/components/NotificationBell";
+
 import {
   detectPatterns,
   patternInfo,
@@ -52,7 +56,6 @@ const fadeInUp = {
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.5 },
 };
-
 // import {
 //   ResponsiveContainer,
 //   LineChart,
@@ -117,17 +120,8 @@ const Header = () => {
         </nav>
       </div>
       <div className="flex items-center space-x-4">
-        <div className="relative hidden md:block">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="What are you looking for today?"
-            className="pl-10 pr-4 py-2 bg-gray-800 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-          <Bell className="text-gray-300 hover:text-blue-500 cursor-pointer transition-colors" />
-        </motion.div>
+        <SearchBar />
+        <NotificationBell />
         <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
           <ShoppingCart className="text-gray-300 hover:text-blue-500 cursor-pointer transition-colors" />
         </motion.div>
@@ -328,19 +322,50 @@ setTradeHistory,
   setTickIntervalMs,
 } = useMarket();
 
-const assets = useMemo(
-  () =>
-    allAssets.filter((a) =>
-      ["NIFTY50", "BTC", "US10Y"].includes(a.id)
-    ),
-  [allAssets]
-);
+// const assets = useMemo(
+//   () =>
+//     allAssets.filter((a) =>
+//       ["NIFTY50", "BTC", "US10Y"].includes(a.id)
+//     ),
+//   [allAssets]
+// );
+// Show the clicked asset + NIFTY50 + BTC + US10Y for comparison
+const assets = useMemo(() => {
+  // Deduplicate all assets by id first
+  const uniqueMap = new Map();
+  allAssets.forEach((a) => {
+    if (!uniqueMap.has(a.id)) {
+      uniqueMap.set(a.id, a);
+    }
+  });
+  const uniqueAssets = Array.from(uniqueMap.values());
+
+  const clicked = uniqueAssets.find((a) => a.id === stock);
+  const others = uniqueAssets.filter((a) =>
+    ["NIFTY50", "BTC", "US10Y"].includes(a.id)
+  );
+
+  // Merge clicked + others, and dedupe again just to be safe
+  const merged = [...(clicked ? [clicked] : []), ...others];
+  const seen = new Set();
+  return merged.filter((a) => {
+    if (seen.has(a.id)) return false;
+    seen.add(a.id);
+    return true;
+  });
+}, [allAssets, stock]);
+// Force the clicked asset to be visible in chart & analytics
+const assetsWithClickedVisible = useMemo(() => {
+  return assets.map((a) =>
+    a.id === stock ? { ...a, visible: true } : a
+  );
+}, [assets, stock]);
 
   // const { points, interval: updateInterval } =
   // getTimeRangeConfig(selectedTimeRange);
 
   const [patterns, setPatterns] = useState([]);
-
+const [normalizedChart, setNormalizedChart] = useState(false);
     // const [selectedPattern, setSelectedPattern] = useState("All");
     const [selectedPattern, setSelectedPattern] = useState(
   initialPreferences?.selectedPattern ?? "All"
@@ -388,6 +413,15 @@ const [visibleAnalytics, setVisibleAnalytics] = useState(
 const [executedStrategies, setExecutedStrategies] =
 useState([]);
 
+const cooldownRef = useRef({});
+const lastFireTimeRef = useRef({});  // ← ADD THIS
+const evaluatingRef = useRef(false);
+// Refs to prevent saving empty state on mount (before userData loads)
+const prefsLoadedRef = useRef(false);
+const patternSavedRef = useRef(false);
+const periodsSavedRef = useRef(false);
+const strategiesSavedRef = useRef(false);
+const ciSavedRef = useRef(false);
 
 //   const [smaPeriod, setSmaPeriod] = useState(20);
 
@@ -411,13 +445,67 @@ const [bbPeriod, setBbPeriod] = useState(
 );
 
 
+// // Persist selectedPattern
+// useEffect(() => {
+//   onPreferencesChange?.({ selectedPattern });
+// }, [selectedPattern]);
+
+// // Persist indicator periods (debounced by value change)
+// useEffect(() => {
+//   onPreferencesChange?.({
+//     smaPeriod,
+//     emaPeriod,
+//     rsiPeriod,
+//     bbPeriod,
+//   });
+// }, [smaPeriod, emaPeriod, rsiPeriod, bbPeriod]);
+
+// // // Persist visible analytics toggles
+// // useEffect(() => {
+// //   onPreferencesChange?.({ visibleAnalytics });
+// // }, [visibleAnalytics]);
+
+
+
+// // Persist strategies
+// useEffect(() => {
+//   onPreferencesChange?.({ strategies });
+// }, [strategies]);
+
+// // Persist custom indicators
+// useEffect(() => {
+//   onPreferencesChange?.({ customIndicators });
+// }, [customIndicators]);
+
+// ---- Persistence effects ----
+// IMPORTANT: Skip the very first fire. On initial mount, `initialPreferences`
+// may still be empty (userData not loaded yet). Without skipping, we'd
+// overwrite Firestore with empty arrays/values and wipe user preferences.
+
+// Wait for userData to load before enabling saves
+useEffect(() => {
+  if (initialPreferences && !prefsLoadedRef.current) {
+    prefsLoadedRef.current = true;
+  }
+}, [initialPreferences]);
+
 // Persist selectedPattern
 useEffect(() => {
+  if (!prefsLoadedRef.current) return;
+  if (!patternSavedRef.current) {
+    patternSavedRef.current = true;
+    return;
+  }
   onPreferencesChange?.({ selectedPattern });
 }, [selectedPattern]);
 
-// Persist indicator periods (debounced by value change)
+// Persist indicator periods
 useEffect(() => {
+  if (!prefsLoadedRef.current) return;
+  if (!periodsSavedRef.current) {
+    periodsSavedRef.current = true;
+    return;
+  }
   onPreferencesChange?.({
     smaPeriod,
     emaPeriod,
@@ -426,22 +514,26 @@ useEffect(() => {
   });
 }, [smaPeriod, emaPeriod, rsiPeriod, bbPeriod]);
 
-// // Persist visible analytics toggles
-// useEffect(() => {
-//   onPreferencesChange?.({ visibleAnalytics });
-// }, [visibleAnalytics]);
-
-
-
 // Persist strategies
 useEffect(() => {
+  if (!prefsLoadedRef.current) return;
+  if (!strategiesSavedRef.current) {
+    strategiesSavedRef.current = true;
+    return;
+  }
   onPreferencesChange?.({ strategies });
 }, [strategies]);
 
 // Persist custom indicators
 useEffect(() => {
+  if (!prefsLoadedRef.current) return;
+  if (!ciSavedRef.current) {
+    ciSavedRef.current = true;
+    return;
+  }
   onPreferencesChange?.({ customIndicators });
 }, [customIndicators]);
+
   
   const patternSummary = useMemo(() => {
   const summary = {
@@ -471,18 +563,32 @@ const FALLBACK_ASSET = {
   change: { value: 0, percentage: 0 },
 };
 
+// const currentAsset =
+//   assets.find((asset) => asset.chartType === "candlestick") ||
+//   assets[0] ||
+//   FALLBACK_ASSET;
+
+// Prefer the clicked stock as the current asset
 const currentAsset =
+  assets.find((a) => a.id === stock) ||
   assets.find((asset) => asset.chartType === "candlestick") ||
   assets[0] ||
   FALLBACK_ASSET;
 
-
-
 // const visiblePoints = points;
-const visibleAssets = assets.map((asset) => ({
-  ...asset,
-  data: asset.data.slice(-60),
-}));
+const visibleAssets = useMemo(() => {
+  const seen = new Set();
+  return assets
+    .filter((a) => {
+      if (seen.has(a.id)) return false;
+      seen.add(a.id);
+      return true;
+    })
+    .map((asset) => ({
+      ...asset,
+      data: asset.data.slice(-60),
+    }));
+}, [assets]);
 const portfolioAnalytics = useMemo(() => {
   return portfolio.map((asset) => {
     const currentPrice =
@@ -909,281 +1015,614 @@ row.BBLower = Number.isFinite(
   setStrategies((prev) => [...prev, newStrategy]);
 };
 
-const evaluateStrategies = async () => {
+// const evaluateStrategies = async () => {
+//   const newSignals = [];
+// const nextExecuted = [...executedStrategies];
+//   for (const strategy of strategies) {
+//     if (!strategy.enabled) continue;
+//     const strategyKey =
+//     `${strategy.indicator}-${strategy.condition}-${strategy.value}-${strategy.action}`;
+//     let currentValue = 0;
+
+//     switch (strategy.indicator) {
+//       case "RSI":
+//         currentValue = Number.isFinite(
+//   rsiData[rsiData.length - 1]
+// )
+//   ? rsiData[rsiData.length - 1]
+//   : 0;
+//         break;
+
+//       case "SMA":
+        
+//         currentValue = Number.isFinite(
+//   smaData[smaData.length - 1]
+// )
+//   ? smaData[smaData.length - 1]
+//   : 0;
+//         break;
+
+//       case "EMA":
+//         currentValue = Number.isFinite(
+//   emaData[emaData.length - 1]
+// )
+//   ? emaData[emaData.length - 1]
+//   : 0;
+//         break;
+
+//       case "Bollinger":
+//         currentValue = Number.isFinite(
+//   bollingerData[bollingerData.length - 1]
+// )
+//   ? bollingerData[bollingerData.length - 1]
+//   : 0;
+//         break;
+
+//       default:
+//         break;
+//     }
+
+
+//     let previousIndicatorValue = 0;
+
+// switch (strategy.indicator) {
+//   case "SMA":
+//     previousIndicatorValue = smaData[smaData.length - 2];
+//     break;
+
+//   case "EMA":
+//     previousIndicatorValue = emaData[emaData.length - 2];
+//     break;
+
+//   case "Bollinger":
+//     previousIndicatorValue =
+//       bollingerData[bollingerData.length - 2]?.middle;
+//     break;
+
+//   case "RSI":
+//     previousIndicatorValue =
+//       rsiData[rsiData.length - 2];
+//     break;
+// }
+
+// const previousPrice =
+//   currentAsset.data[currentAsset.data.length - 2]?.close;
+
+// const currentPrice =
+//   currentAsset.data[currentAsset.data.length - 1]?.close;
+
+//   const previousRSI = rsiData[rsiData.length - 2];
+// const currentRSI = rsiData[rsiData.length - 1];
+
+//     let matched = false;
+
+//     if (
+//       strategy.condition === "Less Than" &&
+//       currentValue < strategy.value
+//     ) {
+//       matched = true;
+//     }
+
+//     if (
+//       strategy.condition === "Greater Than" &&
+//       currentValue > strategy.value
+//     ) {
+//       matched = true;
+//     }
+
+
+//   if (strategy.indicator === "RSI") {
+
+//   if (
+//     strategy.condition === "Cross Above" &&
+//     previousRSI <= strategy.value &&
+//     currentRSI > strategy.value
+//   ) {
+//     matched = true;
+//   }
+
+//   if (
+//     strategy.condition === "Cross Below" &&
+//     previousRSI >= strategy.value &&
+//     currentRSI < strategy.value
+//   ) {
+//     matched = true;
+//   }
+
+// } else {
+
+//   if (
+//     strategy.condition === "Cross Above" &&
+//     previousPrice <= previousIndicatorValue &&
+//     currentPrice > currentValue
+//   ) {
+//     matched = true;
+//   }
+
+//   if (
+//     strategy.condition === "Cross Below" &&
+//     previousPrice >= previousIndicatorValue &&
+//     currentPrice < currentValue
+//   ) {
+//     matched = true;
+//   }
+
+// }
+
+//     if (
+//   matched &&
+//   !executedStrategies.includes(strategyKey)
+// ) {
+
+//   newSignals.push({
+//     indicator: strategy.indicator,
+//     action: strategy.action,
+//     value: currentValue,
+//     time: new Date().toLocaleTimeString(),
+//   });
+
+//   // -------------------------
+//   // Create Trade
+//   // -------------------------
+//   const trade = {
+//   id: Date.now(),
+//   stock: currentAsset.id,
+//   action: strategy.action,
+//   quantity: 1,
+//   price: currentAsset.currentValue,
+//   total: currentAsset.currentValue * 1,
+//   profitLoss: 0,
+//   date: new Date().toLocaleString(),
+//   strategyKey: strategyKey, 
+// };
+
+
+// // Save trade to Firestore
+// if (user) {
+//   try {
+//     const userRef = doc(db, "users", user.uid);
+
+//     await updateDoc(userRef, {
+//       tradeHistory: arrayUnion(trade),
+//     });
+//   } catch (error) {
+//     console.error("Failed to save trade:", error);
+//   }
+// }
+
+
+//   // Save trade history
+//   setTradeHistory((prev) => {
+//   const updatedHistory = [trade, ...prev];
+
+//   if (user) {
+//     updateDoc(doc(db, "users", user.uid), {
+//       tradeHistory: updatedHistory,
+//     });
+//   }
+
+//   return updatedHistory;
+// });
+
+//   // BUY
+//   if (strategy.action === "BUY") {
+//     setPortfolio((prev) => {
+
+//       const alreadyOwned = prev.some(
+//         (item) => item.id === currentAsset.id
+//       );
+
+//       if (alreadyOwned) return prev;
+
+//       return [
+//         ...prev,
+//         {
+//           id: currentAsset.id,
+//           quantity: 1,
+//           avgPrice: currentAsset.currentValue,
+//           currentPrice: currentAsset.currentValue,
+//         },
+//       ];
+//     });
+//   }
+
+//   // SELL
+// // SELL
+// if (strategy.action === "SELL") {
+//   setPortfolio((prev) => {
+//     const asset = prev.find(
+//       (item) => item.id === currentAsset.id
+//     );
+
+//     if (!asset) return prev;
+
+//     const profitLoss =
+//       (currentAsset.currentValue - asset.avgPrice) *
+//       asset.quantity;
+
+//     setTradeHistory((history) => {
+//       const updatedHistory = [...history];
+
+//       const lastTrade = updatedHistory.find(
+//         (t) => t.id === trade.id
+//       );
+
+//       if (lastTrade) {
+//         lastTrade.profitLoss = profitLoss;
+//       }
+
+//       return updatedHistory;
+//     });
+
+//     return prev.filter(
+//       (item) => item.id !== currentAsset.id
+//     );
+//   });
+// }
+
+// // setExecutedStrategies((prev) => [
+// //   ...prev,
+// //   strategyKey,
+// // ]);
+// if (!nextExecuted.includes(strategyKey)) {
+//     nextExecuted.push(strategyKey);
+// }
+
+// } // <-- closes "if (matched)"
+
+// else {
+//   const index = nextExecuted.indexOf(strategyKey);
+
+// if (index !== -1) {
+//     nextExecuted.splice(index,1);
+// }
+// }
+
+// } // <-- closes "for (const strategy...)"
+
+// setExecutedStrategies(nextExecuted);
+
+// setSignals(prev => {
+//   if (JSON.stringify(prev) === JSON.stringify(newSignals)) {
+//     return prev;
+//   }
+//   return newSignals;
+// });
+
+// }; // <-- closes evaluateStrategies
+const evaluateStrategies = () => {
+  if (evaluatingRef.current) return;
+  evaluatingRef.current = true;
+  try {
+  // ---- 1. Compute current + previous values for each indicator ONCE ----
+  const latest = {
+    RSI: Number.isFinite(rsiData[rsiData.length - 1])
+      ? rsiData[rsiData.length - 1]
+      : 0,
+    SMA: Number.isFinite(smaData[smaData.length - 1])
+      ? smaData[smaData.length - 1]
+      : 0,
+    EMA: Number.isFinite(emaData[emaData.length - 1])
+      ? emaData[emaData.length - 1]
+      : 0,
+    Bollinger: Number.isFinite(bollingerData[bollingerData.length - 1]?.middle)
+      ? bollingerData[bollingerData.length - 1].middle
+      : 0,
+  };
+
+  const prev = {
+    RSI: rsiData[rsiData.length - 2],
+    SMA: smaData[smaData.length - 2],
+    EMA: emaData[emaData.length - 2],
+    Bollinger: bollingerData[bollingerData.length - 2]?.middle,
+  };
+
+  const currentPrice =
+    currentAsset.data[currentAsset.data.length - 1]?.close ?? 0;
+  const previousPrice =
+    currentAsset.data[currentAsset.data.length - 2]?.close ?? 0;
+
+  // ---- 2. Evaluate each strategy ----
   const newSignals = [];
-const nextExecuted = [...executedStrategies];
+  const newTrades = [];
+  const nextExecuted = [...executedStrategies];
+  const firedThisTick = new Set();  // ← ADD THIS
+
   for (const strategy of strategies) {
     if (!strategy.enabled) continue;
-    const strategyKey =
-    `${strategy.indicator}-${strategy.condition}-${strategy.value}-${strategy.action}`;
-    let currentValue = 0;
 
-    switch (strategy.indicator) {
-      case "RSI":
-        currentValue = Number.isFinite(
-  rsiData[rsiData.length - 1]
-)
-  ? rsiData[rsiData.length - 1]
-  : 0;
-        break;
-
-      case "SMA":
-        
-        currentValue = Number.isFinite(
-  smaData[smaData.length - 1]
-)
-  ? smaData[smaData.length - 1]
-  : 0;
-        break;
-
-      case "EMA":
-        currentValue = Number.isFinite(
-  emaData[emaData.length - 1]
-)
-  ? emaData[emaData.length - 1]
-  : 0;
-        break;
-
-      case "Bollinger":
-        currentValue = Number.isFinite(
-  bollingerData[bollingerData.length - 1]
-)
-  ? bollingerData[bollingerData.length - 1]
-  : 0;
-        break;
-
-      default:
-        break;
-    }
-
-
-    let previousIndicatorValue = 0;
-
-switch (strategy.indicator) {
-  case "SMA":
-    previousIndicatorValue = smaData[smaData.length - 2];
-    break;
-
-  case "EMA":
-    previousIndicatorValue = emaData[emaData.length - 2];
-    break;
-
-  case "Bollinger":
-    previousIndicatorValue =
-      bollingerData[bollingerData.length - 2]?.middle;
-    break;
-
-  case "RSI":
-    previousIndicatorValue =
-      rsiData[rsiData.length - 2];
-    break;
-}
-
-const previousPrice =
-  currentAsset.data[currentAsset.data.length - 2]?.close;
-
-const currentPrice =
-  currentAsset.data[currentAsset.data.length - 1]?.close;
-
-  const previousRSI = rsiData[rsiData.length - 2];
-const currentRSI = rsiData[rsiData.length - 1];
+    const key = `${strategy.indicator}-${strategy.condition}-${strategy.value}-${strategy.action}`;
+    const currentValue = latest[strategy.indicator] ?? 0;
 
     let matched = false;
 
-    if (
-      strategy.condition === "Less Than" &&
-      currentValue < strategy.value
-    ) {
+    // Simple threshold conditions
+    if (strategy.condition === "Less Than" && currentValue < strategy.value) {
+      matched = true;
+    }
+    if (strategy.condition === "Greater Than" && currentValue > strategy.value) {
       matched = true;
     }
 
-    if (
-      strategy.condition === "Greater Than" &&
-      currentValue > strategy.value
-    ) {
-      matched = true;
+    // Cross conditions (need previous value)
+    if (strategy.indicator === "RSI") {
+      if (
+        strategy.condition === "Cross Above" &&
+        prev.RSI <= strategy.value &&
+        latest.RSI > strategy.value
+      ) {
+        matched = true;
+      }
+      if (
+        strategy.condition === "Cross Below" &&
+        prev.RSI >= strategy.value &&
+        latest.RSI < strategy.value
+      ) {
+        matched = true;
+      }
+    } else {
+      const prevVal = prev[strategy.indicator] ?? 0;
+      if (
+        strategy.condition === "Cross Above" &&
+        previousPrice <= prevVal &&
+        currentPrice > currentValue
+      ) {
+        matched = true;
+      }
+      if (
+        strategy.condition === "Cross Below" &&
+        previousPrice >= prevVal &&
+        currentPrice < currentValue
+      ) {
+        matched = true;
+      }
     }
 
+    const wasExecuted = executedStrategies.includes(key);
 
-  if (strategy.indicator === "RSI") {
+    // ---- 3. Fire only on fresh match (edge-triggered) ----
+if (matched && !wasExecuted && !firedThisTick.has(key)) {
+  firedThisTick.add(key);  // ← prevents double-fire in same tick
+  lastFireTimeRef.current[key] = Date.now();
 
-  if (
-    strategy.condition === "Cross Above" &&
-    previousRSI <= strategy.value &&
-    currentRSI > strategy.value
-  ) {
-    matched = true;
-  }
+  // Add to executed set
+  if (!nextExecuted.includes(key)) nextExecuted.push(key);
 
-  if (
-    strategy.condition === "Cross Below" &&
-    previousRSI >= strategy.value &&
-    currentRSI < strategy.value
-  ) {
-    matched = true;
-  }
+  // Build signal object
+// Use the current candle's timestamp for id → same candle = same id
+const candleTime =
+  currentAsset.data[currentAsset.data.length - 1]?.date?.getTime?.() ??
+  Math.floor(Date.now() / 60000); // fallback: minute bucket
 
-} else {
+const signal = {
+  id: `${key}-${candleTime}`,
+  indicator: strategy.indicator,
+  action: strategy.action,
+  value: currentValue,
+  time: new Date().toLocaleTimeString(),
+};
+newSignals.push(signal);
 
-  if (
-    strategy.condition === "Cross Above" &&
-    previousPrice <= previousIndicatorValue &&
-    currentPrice > currentValue
-  ) {
-    matched = true;
-  }
-
-  if (
-    strategy.condition === "Cross Below" &&
-    previousPrice >= previousIndicatorValue &&
-    currentPrice < currentValue
-  ) {
-    matched = true;
-  }
-
+  // Build trade object
+  const trade = {
+    id: Date.now() + Math.random(),
+    stock: currentAsset.id,
+    action: strategy.action,
+    quantity: 1,
+    price: currentAsset.currentValue,
+    total: currentAsset.currentValue,
+    profitLoss: 0,
+    date: new Date().toLocaleString(),
+    strategyKey: key,
+  };
+  newTrades.push(trade);
 }
 
-    if (
-  matched &&
-  !executedStrategies.includes(strategyKey)
-) {
+   // ---- 4. Cooldown-based reset ----
+// Only reset after the condition has been false for 2 consecutive ticks.
+// This prevents re-firing when RSI hovers around the threshold.
+// ---- 4. Cooldown-based reset ----
+// Strategy stays "executed" until:
+//   (a) at least MIN_COOLDOWN_MS have passed since last fire, AND
+//   (b) the condition has been FALSE for at least 2 ticks
+// This prevents high-frequency re-firing when RSI oscillates around the threshold.
+const MIN_COOLDOWN_MS = 60 * 1000; // 60 seconds
+const lastFire = lastFireTimeRef.current[key] || 0;
+const cooldownDone = Date.now() - lastFire >= MIN_COOLDOWN_MS;
 
-  newSignals.push({
-    indicator: strategy.indicator,
-    action: strategy.action,
-    value: currentValue,
-    time: new Date().toLocaleTimeString(),
-  });
+if (!matched && wasExecuted) {
+  const falseStreakKey = `${key}__falseStreak`;
+  const currentStreak = cooldownRef.current[falseStreakKey] || 0;
 
-  // -------------------------
-  // Create Trade
-  // -------------------------
-  const trade = {
-  id: Date.now(),
-  stock: currentAsset.id,
-  action: strategy.action,
-  quantity: 1,
-  price: currentAsset.currentValue,
-  total: currentAsset.currentValue * 1,
-  profitLoss: 0,
-  date: new Date().toLocaleString(),
-  strategyKey: strategyKey, 
+  // Require cooldown AND 2 consecutive false ticks to reset
+  if (cooldownDone && currentStreak >= 1) {
+    const idx = nextExecuted.indexOf(key);
+    if (idx !== -1) nextExecuted.splice(idx, 1);
+    cooldownRef.current[falseStreakKey] = 0;
+  } else {
+    cooldownRef.current[falseStreakKey] = currentStreak + 1;
+  }
+} else if (matched) {
+  // Reset the false-streak counter when condition is true again
+  const falseStreakKey = `${key}__falseStreak`;
+  cooldownRef.current[falseStreakKey] = 0;
+}
+  }
+
+  // ---- 5. Apply state updates (batched) ----
+  if (nextExecuted.length !== executedStrategies.length) {
+    setExecutedStrategies(nextExecuted);
+  }
+
+  if (newSignals.length > 0) {
+    setSignals((prevSignals) => {
+      // Prepend new signals, keep last 20, dedupe by id
+      const combined = [...newSignals, ...prevSignals];
+      const seen = new Set();
+      return combined
+        .filter((s) => {
+          if (seen.has(s.id)) return false;
+          seen.add(s.id);
+          return true;
+        })
+        .slice(0, 20);
+    });
+  }
+
+  // ---- 6. Persist trades ONE time, and update BOTH states ----
+    if (newTrades.length > 0) {
+    setTradeHistory((prevHistory) => {
+      const updated = [...newTrades, ...prevHistory];
+
+      if (user) {
+        // 1) Save trade history
+        updateDoc(doc(db, "users", user.uid), {
+          tradeHistory: updated,
+        }).catch((err) => console.error("Trade persist failed:", err));
+
+               // 2) Also push to "transactions" (dashboard reads this)
+        const transactionsFromTrades = newTrades.map((t) => ({
+          type: t.action, // "BUY" or "SELL"
+          stock: t.stock,
+          quantity: t.quantity,
+          price: t.price,
+          fee: Number((t.price * t.quantity * 0.005).toFixed(2)),
+          total: Number((t.price * t.quantity).toFixed(2)),
+          realizedPL: t.profitLoss || 0,
+          date: new Date().toISOString(),
+        }));
+
+        // Read current doc first, then write merged array.
+        // This avoids arrayUnion silently failing on undefined fields.
+        getDoc(doc(db, "users", user.uid)).then((snap) => {
+          const existingTx = snap.exists()
+            ? snap.data().transactions || []
+            : [];
+          const mergedTx = [
+            ...transactionsFromTrades,
+            ...existingTx,
+          ];
+          return updateDoc(doc(db, "users", user.uid), {
+            transactions: mergedTx,
+          });
+        }).catch((err) =>
+          console.error("Transactions persist failed:", err)
+        );
+      }
+
+      return updated;
+    });
+
+   // ---- Apply portfolio changes + persist to Firestore ----
+   // ---- Apply portfolio changes + persist to Firestore ----
+   // Defer this entire block to the next tick so React finishes its
+   // current render cycle before we touch the parent's state.
+   window.setTimeout(() => {
+     setPortfolio((prevPortfolio) => {
+       let next = [...prevPortfolio];
+
+       newTrades.forEach((trade) => {
+         if (trade.action === "BUY") {
+           const idx = next.findIndex((p) => p.id === trade.stock);
+
+           if (idx === -1) {
+             // New position
+             next.push({
+               id: trade.stock,
+               quantity: trade.quantity,
+               avgPrice: Number(trade.price.toFixed(2)),
+               currentPrice: Number(trade.price.toFixed(2)),
+               previousPrice: Number(trade.price.toFixed(2)),
+               costBasis: Number((trade.price * trade.quantity).toFixed(2)),
+               portfolioValue: Number((trade.price * trade.quantity).toFixed(2)),
+               unrealizedPL: 0,
+               realizedPL: 0,
+               returnPercentage: 0,
+             });
+           } else {
+             // Add to existing position — recompute weighted avg price
+             const existing = next[idx];
+             const totalQty = existing.quantity + trade.quantity;
+             const totalCost =
+               existing.avgPrice * existing.quantity +
+               trade.price * trade.quantity;
+             const newAvg = totalCost / totalQty;
+
+             next[idx] = {
+               ...existing,
+               quantity: totalQty,
+               avgPrice: Number(newAvg.toFixed(2)),
+               costBasis: Number(totalCost.toFixed(2)),
+               currentPrice: Number(trade.price.toFixed(2)),
+               previousPrice: Number(existing.currentPrice?.toFixed?.(2) ?? trade.price.toFixed(2)),
+               portfolioValue: Number((trade.price * totalQty).toFixed(2)),
+             };
+           }
+         } else if (trade.action === "SELL") {
+           const idx = next.findIndex((p) => p.id === trade.stock);
+           if (idx === -1) return;
+
+           const owned = next[idx];
+           const profitLoss = Number(
+             ((trade.price - owned.avgPrice) * trade.quantity).toFixed(2)
+           );
+           trade.profitLoss = profitLoss;
+
+           const remaining = owned.quantity - trade.quantity;
+           if (remaining <= 0) {
+             next.splice(idx, 1);
+           } else {
+             next[idx] = {
+               ...owned,
+               quantity: remaining,
+               currentPrice: Number(trade.price.toFixed(2)),
+               previousPrice: Number(owned.currentPrice?.toFixed?.(2) ?? trade.price.toFixed(2)),
+               realizedPL: Number(((owned.realizedPL || 0) + profitLoss).toFixed(2)),
+               portfolioValue: Number((trade.price * remaining).toFixed(2)),
+             };
+           }
+         }
+       });
+
+       // ---- Persist to Firestore so it survives refresh ----
+       if (user) {
+         updateDoc(doc(db, "users", user.uid), {
+           portfolio: next,
+         }).catch((err) => console.error("Portfolio persist failed:", err));
+       }
+
+       return next;
+     });
+
+     // Toasts outside the state updater (also deferred)
+     newTrades.forEach((trade) => {
+       toast.success(
+         `${trade.action} ${trade.quantity} × ${trade.stock} @ ₹${trade.price.toFixed(2)}`
+       );
+
+       // Save notification
+       if (user) {
+         addNotification(user.uid, {
+           type: "STRATEGY",
+           title: `Strategy ${trade.action} — ${trade.stock}`,
+           message: `${trade.quantity} share(s) @ ₹${trade.price.toFixed(
+             2
+           )} · Strategy: ${trade.strategyKey}`,
+         }).catch((e) => console.error("Notification failed:", e));
+       }
+     });
+   }, 0);
+
+  }
+}finally {
+    setTimeout(() => {
+      evaluatingRef.current = false;
+    }, 200);
+  }
+
 };
 
 
-// Save trade to Firestore
-if (user) {
-  try {
-    const userRef = doc(db, "users", user.uid);
-
-    await updateDoc(userRef, {
-      tradeHistory: arrayUnion(trade),
-    });
-  } catch (error) {
-    console.error("Failed to save trade:", error);
-  }
-}
-
-
-  // Save trade history
-  setTradeHistory((prev) => {
-  const updatedHistory = [trade, ...prev];
-
-  if (user) {
-    updateDoc(doc(db, "users", user.uid), {
-      tradeHistory: updatedHistory,
-    });
-  }
-
-  return updatedHistory;
-});
-
-  // BUY
-  if (strategy.action === "BUY") {
-    setPortfolio((prev) => {
-
-      const alreadyOwned = prev.some(
-        (item) => item.id === currentAsset.id
-      );
-
-      if (alreadyOwned) return prev;
-
-      return [
-        ...prev,
-        {
-          id: currentAsset.id,
-          quantity: 1,
-          avgPrice: currentAsset.currentValue,
-          currentPrice: currentAsset.currentValue,
-        },
-      ];
-    });
-  }
-
-  // SELL
-// SELL
-if (strategy.action === "SELL") {
-  setPortfolio((prev) => {
-    const asset = prev.find(
-      (item) => item.id === currentAsset.id
-    );
-
-    if (!asset) return prev;
-
-    const profitLoss =
-      (currentAsset.currentValue - asset.avgPrice) *
-      asset.quantity;
-
-    setTradeHistory((history) => {
-      const updatedHistory = [...history];
-
-      const lastTrade = updatedHistory.find(
-        (t) => t.id === trade.id
-      );
-
-      if (lastTrade) {
-        lastTrade.profitLoss = profitLoss;
-      }
-
-      return updatedHistory;
-    });
-
-    return prev.filter(
-      (item) => item.id !== currentAsset.id
-    );
-  });
-}
-
-// setExecutedStrategies((prev) => [
-//   ...prev,
-//   strategyKey,
-// ]);
-if (!nextExecuted.includes(strategyKey)) {
-    nextExecuted.push(strategyKey);
-}
-
-} // <-- closes "if (matched)"
-
-else {
-  const index = nextExecuted.indexOf(strategyKey);
-
-if (index !== -1) {
-    nextExecuted.splice(index,1);
-}
-}
-
-} // <-- closes "for (const strategy...)"
-
-setExecutedStrategies(nextExecuted);
-
-setSignals(prev => {
-  if (JSON.stringify(prev) === JSON.stringify(newSignals)) {
-    return prev;
-  }
-  return newSignals;
-});
-
-}; // <-- closes evaluateStrategies
 const latestRSI = Number.isFinite(
   rsiData[rsiData.length - 1]
 )
@@ -1210,10 +1649,26 @@ const latestEMA = Number.isFinite(
   ? bollingerData[bollingerData.length - 1]
   : 0;
 
+// useEffect(() => {
+//   if (strategies.length === 0) return;
+
+//   evaluateStrategies();
+// }, [
+//   strategies,
+//   latestRSI,
+//   latestSMA,
+//   latestEMA,
+//   latestBB,
+// ]);
+
 useEffect(() => {
   if (strategies.length === 0) return;
 
+const id = setTimeout(() => {
   evaluateStrategies();
+}, 50);
+
+  return () => clearTimeout(id);
 }, [
   strategies,
   latestRSI,
@@ -1221,6 +1676,9 @@ useEffect(() => {
   latestEMA,
   latestBB,
 ]);
+
+
+
 
   const highestGainer = [...assetPerformance].sort(
     (a, b) => b.percentage - a.percentage,
@@ -1806,9 +2264,9 @@ useEffect(() => {
         </ResponsiveContainer>
         )}
       </div> */}
-<div className="w-full">
+{/* <div className="w-full">
   <MultiAssetChart
-    assets={assets}
+    assets={assetsWithClickedVisible}
     patterns={patterns}
     selectedPattern={selectedPattern}
     selectedIndicators={selectedIndicators}
@@ -1816,6 +2274,33 @@ useEffect(() => {
     emaData={emaData}
     bollingerData={bollingerData}
     customIndicatorData={customIndicatorData}
+  />
+</div> */}
+{/* Normalize toggle */}
+<div className="flex justify-end mb-2">
+  <button
+    onClick={() => setNormalizedChart((prev) => !prev)}
+    className={`text-xs px-3 py-1 rounded ${
+      normalizedChart
+        ? "bg-green-600 text-white"
+        : "bg-gray-700 text-gray-300"
+    }`}
+  >
+    {normalizedChart ? "✓ Normalized (% change)" : "Normalize"}
+  </button>
+</div>
+
+<div className="w-full">
+  <MultiAssetChart
+    assets={assetsWithClickedVisible}
+    patterns={patterns}
+    selectedPattern={selectedPattern}
+    selectedIndicators={selectedIndicators}
+    smaData={smaData}
+    emaData={emaData}
+    bollingerData={bollingerData}
+    customIndicatorData={customIndicatorData}
+    normalized={normalizedChart}
   />
 </div>
 
@@ -1846,7 +2331,7 @@ useEffect(() => {
 )}
 
 <AnalyticsDashboard
-  assets={assets}
+  assets={assetsWithClickedVisible}
   selectedTimeRange={selectedTimeRange}
   visibleAnalytics={visibleAnalytics}
   setVisibleAnalytics={setVisibleAnalytics}
@@ -2922,7 +3407,8 @@ const OpenInterest = () => {
 
 export default function GrowwNIFTY50Page() {
   const { id } = useParams();
-  const { user,userData } = useAuth();
+  const { user, userData, loading: authLoading } = useAuth();
+  const { getPrice, setTickIntervalMs } = useMarket();
   const [loading, setLoading] = useState(true);
   const [isInWatchlist, setIsInWatchlist] = useState(false);
   const [watchlist, setWatchlist] = useState([]);
@@ -3030,6 +3516,26 @@ useEffect(() => {
       </div>
     );
   }
+  // Wait for userData to load — prevents StockChart from mounting
+  // with empty preferences and then overwriting Firestore
+  if (authLoading || (user && !userData)) {
+    return (
+      <div className="bg-gray-900 min-h-screen flex items-center justify-center">
+        <motion.div
+          className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
+        >
+          <div className="h-40 w-40 bg-blue-500 rounded-full flex items-center justify-center">
+            <span className="text-white text-2xl font-bold">Loading...</span>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+
   const addToWatchlist = async () => {
     if (!user) {
       toast.error("Please login first");
@@ -3062,6 +3568,12 @@ useEffect(() => {
       setWatchlist((prev) => [...prev, id]);
 
       toast.success(`${id} added to Watchlist`);
+
+      await addNotification(user.uid, {
+        type: "WATCHLIST",
+        title: `Added to Watchlist`,
+        message: `${id} added to your watchlist`,
+      });
     } catch (error) {
       console.error(error);
       toast.error("Something went wrong");
@@ -3072,75 +3584,138 @@ useEffect(() => {
     setShowBuyModal(true);
   };
 
-  const confirmBuy = async () => {
-    if (!user) {
-      toast.error("Please login first");
-      return;
-    }
-const quantity = Number(buyQuantity);
+//   const confirmBuy = async () => {
+//     if (!user) {
+//       toast.error("Please login first");
+//       return;
+//     }
+// const quantity = Number(buyQuantity);
 
-if (!quantity || quantity < 1) {
+// if (!quantity || quantity < 1) {
+//     toast.error("Please enter a valid quantity");
+//     return;
+// }
+//     const currentPrice = 425000;
+
+//     const transactionCost = currentPrice * quantity * 0.005;
+//     const transaction = {
+//       type: "BUY",
+//       stock: id,
+//       quantity: quantity,
+//       price: currentPrice,
+//       fee: transactionCost,
+//       total: currentPrice * quantity + transactionCost,
+//       date: new Date().toISOString(),
+//     };
+
+//     const asset = {
+//       id,
+
+//       quantity: quantity,
+
+//       avgPrice: currentPrice,
+
+//       currentPrice,
+
+//       previousPrice: currentPrice,
+
+//       transactionCost,
+
+//       costBasis: currentPrice * quantity + transactionCost,
+
+//       unrealizedPL: 0,
+
+//       realizedPL: 0,
+
+//       returnPercentage: 0,
+
+//       portfolioValue: currentPrice * quantity,
+//     };
+
+//     const userRef = doc(db, "users", user.uid);
+//     try {
+//       await updateDoc(userRef, {
+//         portfolio: arrayUnion(asset),
+//         transactions: arrayUnion(transaction),
+//       });
+
+//       setPortfolio((prev) => [...prev, asset]);
+
+//       setIsInPortfolio(true);
+
+//       setShowBuyModal(false);
+
+//       setBuyQuantity(1);
+
+//       toast.success("Stock Purchased");
+//     } catch (error) {
+//       toast.error("Purchase failed");
+//     }
+//   };
+const confirmBuy = async () => {
+  if (!user) {
+    toast.error("Please login first");
+    return;
+  }
+
+  const quantity = Number(buyQuantity);
+  if (!quantity || quantity < 1) {
     toast.error("Please enter a valid quantity");
     return;
-}
-    const currentPrice = 425000;
+  }
 
-    const transactionCost = currentPrice * quantity * 0.005;
-    const transaction = {
-      type: "BUY",
-      stock: id,
-      quantity: quantity,
-      price: currentPrice,
-      fee: transactionCost,
-      total: currentPrice * quantity + transactionCost,
-      date: new Date().toISOString(),
-    };
+  // LIVE price from MarketContext
+  const currentPrice = getPrice(id) ?? 425000;
 
-    const asset = {
-      id,
-
-      quantity: quantity,
-
-      avgPrice: currentPrice,
-
-      currentPrice,
-
-      previousPrice: currentPrice,
-
-      transactionCost,
-
-      costBasis: currentPrice * quantity + transactionCost,
-
-      unrealizedPL: 0,
-
-      realizedPL: 0,
-
-      returnPercentage: 0,
-
-      portfolioValue: currentPrice * quantity,
-    };
-
-    const userRef = doc(db, "users", user.uid);
-    try {
-      await updateDoc(userRef, {
-        portfolio: arrayUnion(asset),
-        transactions: arrayUnion(transaction),
-      });
-
-      setPortfolio((prev) => [...prev, asset]);
-
-      setIsInPortfolio(true);
-
-      setShowBuyModal(false);
-
-      setBuyQuantity(1);
-
-      toast.success("Stock Purchased");
-    } catch (error) {
-      toast.error("Purchase failed");
-    }
+  const transactionCost = currentPrice * quantity * 0.005;
+  const transaction = {
+    type: "BUY",
+    stock: id,
+    quantity,
+    price: currentPrice,
+    fee: transactionCost,
+    total: currentPrice * quantity + transactionCost,
+    date: new Date().toISOString(),
   };
 
+  const asset = {
+    id,
+    quantity,
+    avgPrice: currentPrice,
+    currentPrice,
+    previousPrice: currentPrice,
+    transactionCost,
+    costBasis: currentPrice * quantity + transactionCost,
+    unrealizedPL: 0,
+    realizedPL: 0,
+    returnPercentage: 0,
+    portfolioValue: currentPrice * quantity,
+  };
+
+  const userRef = doc(db, "users", user.uid);
+  try {
+    await updateDoc(userRef, {
+      portfolio: arrayUnion(asset),
+      transactions: arrayUnion(transaction),
+    });
+    setPortfolio((prev) => [...prev, asset]);
+    setIsInPortfolio(true);
+    setShowBuyModal(false);
+    setBuyQuantity(1);
+    toast.success(`Bought ${quantity} × ${id} @ ₹${currentPrice.toFixed(2)}`);
+
+    // Save notification
+    await addNotification(user.uid, {
+      type: "BUY",
+      title: `Bought ${id}`,
+      message: `${quantity} share(s) @ ₹${currentPrice.toFixed(2)} · Total ₹${(
+        currentPrice * quantity
+      ).toFixed(2)}`,
+    });
+  } catch (error) {
+    toast.error("Purchase failed");
+  }
+};
   const removeFromWatchlist = async () => {
     if (!user) return;
 
@@ -3184,6 +3759,10 @@ if (!quantity || quantity < 1) {
     const transactionFee =
       sellPrice * asset.quantity * 0.005;
 
+    // Calculate realized P/L for this sell
+    const sellRealizedPL =
+      (sellPrice - asset.avgPrice) * asset.quantity - transactionFee;
+
     const sellTransaction = {
       type: "SELL",
       stock: id,
@@ -3193,6 +3772,7 @@ if (!quantity || quantity < 1) {
       total:
         sellPrice * asset.quantity -
         transactionFee,
+      realizedPL: sellRealizedPL,
       date: new Date().toISOString(),
     };
 
@@ -3201,15 +3781,29 @@ if (!quantity || quantity < 1) {
         (item) => item.id !== id
       );
 
+    // Accumulate total realized P/L (never resets)
+    const existingRealizedPL = data.realizedPL || 0;
+    const newRealizedPL = existingRealizedPL + sellRealizedPL;
+
     await updateDoc(userRef, {
       portfolio: updatedPortfolio,
       transactions: arrayUnion(sellTransaction),
+      realizedPL: newRealizedPL,
     });
 
     setPortfolio(updatedPortfolio);
     setIsInPortfolio(false);
 
     toast.success(`${id} sold successfully`);
+
+    // Save notification
+    await addNotification(user.uid, {
+      type: "SELL",
+      title: `Sold ${id}`,
+      message: `${asset.quantity} share(s) @ ₹${sellPrice.toFixed(2)} · Total ₹${(
+        sellPrice * asset.quantity
+      ).toFixed(2)}`,
+    });
   } catch (error) {
     console.error(error);
     toast.error("Something went wrong");
@@ -3344,7 +3938,7 @@ setTradeHistory={setTradeHistory}
     if (user) savePreferences(user.uid, partial);
   }}
         />
-        {showBuyModal && (
+        {/* {showBuyModal && (
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
             <div className="bg-gray-800 p-4 sm:p-6 rounded-xl w-[95%] sm:w-96 mx-4">
               <h2 className="text-2xl font-bold text-white mb-5">Buy Stock</h2>
@@ -3391,7 +3985,61 @@ setTradeHistory={setTradeHistory}
               </div>
             </div>
           </div>
-        )}
+        )} */}
+
+        {showBuyModal && (
+  <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+    <div className="bg-gray-800 p-4 sm:p-6 rounded-xl w-[95%] sm:w-96 mx-4">
+      <h2 className="text-2xl font-bold text-white mb-5">Buy Stock</h2>
+
+      <label className="text-gray-300">Quantity</label>
+
+      <input
+        type="number"
+        min={1}
+        value={buyQuantity}
+        onChange={(e) => setBuyQuantity(Number(e.target.value) || 1)}
+        className="w-full mt-2 mb-5 p-2 rounded bg-gray-700 text-white"
+      />
+
+      {(() => {
+        const livePrice = getPrice(id) ?? 425000;
+        const fees = livePrice * quantity * 0.005;
+        return (
+          <>
+            <p className="mb-2">
+              Current Price : ₹{livePrice.toFixed(2)}
+            </p>
+
+            <p className="mb-2">
+              Transaction Fee : ₹{fees.toFixed(2)}
+            </p>
+
+            <p className="font-bold mb-5">
+              Total : ₹{(livePrice * quantity + fees).toFixed(2)}
+            </p>
+          </>
+        );
+      })()}
+
+      <div className="flex flex-col sm:flex-row gap-3">
+        <button
+          onClick={() => setShowBuyModal(false)}
+          className="flex-1 bg-gray-600 py-2 rounded"
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={confirmBuy}
+          className="flex-1 bg-green-600 py-2 rounded"
+        >
+          Confirm Buy
+        </button>
+      </div>
+    </div>
+  </div>
+)}
         <OptionsTable stock={id} />
         <OpenInterest />
       </main>

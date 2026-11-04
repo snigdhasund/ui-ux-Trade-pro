@@ -78,10 +78,16 @@ export default function StrategyPerformance({ strategies, tradeHistory }: Props)
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                <div>
+                {/* <div>
                   <div className="text-gray-400">Trades</div>
                   <div className="text-white font-bold">{s.totalTrades}</div>
-                </div>
+                </div> */}
+                <div>
+  <div className="text-gray-400">Trades</div>
+  <div className="text-white font-bold">
+    {s.closedTrades} closed / {s.totalTrades} total
+  </div>
+</div>
                 <div>
                   <div className="text-gray-400">Win Rate</div>
                   <div className="text-blue-400 font-bold">

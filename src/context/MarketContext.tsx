@@ -50,6 +50,33 @@ const MarketContext = createContext<MarketContextType>({
 });
 
 // ---------- seed helpers ----------
+// function generateSeedData(startPrice: number, points = 60, intervalMs = 5000): Candle[] {
+//   const out: Candle[] = [];
+//   let price = startPrice;
+
+//   for (let i = points; i >= 0; i--) {
+//     const date = new Date(Date.now() - i * intervalMs);
+//     const open = price;
+//     const close = open + (Math.random() - 0.5) * 12;
+//     const high = Math.max(open, close) + Math.random() * 5;
+//     const low = Math.min(open, close) - Math.random() * 5;
+
+//     out.push({ date, open, high, low, close });
+//     price = close;
+//   }
+
+//   return out;
+// }
+
+// function nextCandle(currentPrice: number): Candle {
+//   const open = currentPrice;
+//   const close = open + (Math.random() - 0.5) * 12;
+//   const high = Math.max(open, close) + Math.random() * 5;
+//   const low = Math.min(open, close) - Math.random() * 5;
+
+//   return { date: new Date(), open, high, low, close };
+// }
+
 function generateSeedData(startPrice: number, points = 60, intervalMs = 5000): Candle[] {
   const out: Candle[] = [];
   let price = startPrice;
@@ -57,27 +84,159 @@ function generateSeedData(startPrice: number, points = 60, intervalMs = 5000): C
   for (let i = points; i >= 0; i--) {
     const date = new Date(Date.now() - i * intervalMs);
     const open = price;
-    const close = open + (Math.random() - 0.5) * 12;
-    const high = Math.max(open, close) + Math.random() * 5;
-    const low = Math.min(open, close) - Math.random() * 5;
-
+    const pctMove = (Math.random() - 0.5) * 0.006;  // ±0.3%
+    const close = open * (1 + pctMove);
+    const high = Math.max(open, close) * (1 + Math.random() * 0.001);
+    const low = Math.min(open, close) * (1 - Math.random() * 0.001);
     out.push({ date, open, high, low, close });
     price = close;
   }
-
   return out;
 }
 
 function nextCandle(currentPrice: number): Candle {
   const open = currentPrice;
-  const close = open + (Math.random() - 0.5) * 12;
-  const high = Math.max(open, close) + Math.random() * 5;
-  const low = Math.min(open, close) - Math.random() * 5;
-
+  const pctMove = (Math.random() - 0.5) * 0.006;
+  const close = open * (1 + pctMove);
+  const high = Math.max(open, close) * (1 + Math.random() * 0.001);
+  const low = Math.min(open, close) * (1 - Math.random() * 0.001);
   return { date: new Date(), open, high, low, close };
 }
 
 // ---------- the initial set of market assets (single source of truth) ----------
+// const SEED_ASSETS: Asset[] = [
+//   {
+//     id: "NIFTY50",
+//     type: "Stock",
+//     color: "#3B82F6",
+//     visible: true,
+//     chartType: "candlestick",
+//     currentValue: 425000,
+//     data: generateSeedData(425000),
+//     change: { value: 0, percentage: 0 },
+//   },
+//   {
+//     id: "BTC",
+//     type: "Crypto",
+//     color: "#F59E0B",
+//     visible: true,
+//     chartType: "line",
+//     currentValue: 64000,
+//     data: generateSeedData(64000),
+//     change: { value: 0, percentage: 0 },
+//   },
+//   {
+//     id: "US10Y",
+//     type: "Bond",
+//     color: "#10B981",
+//     visible: true,
+//     chartType: "bar",
+//     currentValue: 20000,
+//     data: generateSeedData(20000),
+//     change: { value: 0, percentage: 0 },
+//   },
+//   // Indices used on the dashboard home page
+//   {
+//     id: "SENSEX",
+//     type: "Index",
+//     color: "#8B5CF6",
+//     visible: false,
+//     chartType: "line",
+//     currentValue: 61002,
+//     data: generateSeedData(61002),
+//     change: { value: 0, percentage: 0 },
+//   },
+//   {
+//     id: "BANKNIFTY",
+//     type: "Index",
+//     color: "#EC4899",
+//     visible: false,
+//     chartType: "line",
+//     currentValue: 43123,
+//     data: generateSeedData(43123),
+//     change: { value: 0, percentage: 0 },
+//   },
+//   {
+//   id: "Reliance",
+//   type: "Stock",
+//   color: "#3B82F6",
+//   visible: false,
+//   chartType: "line",
+//   currentValue: 2345.6,
+//   data: generateSeedData(2345.6),
+//   change: { value: 0, percentage: 0 },
+// },
+// {
+//   id: "Tata Motors",
+//   type: "Stock",
+//   color: "#6366F1",
+//   visible: false,
+//   chartType: "line",
+//   currentValue: 456.75,
+//   data: generateSeedData(456.75),
+//   change: { value: 0, percentage: 0 },
+// },
+// {
+//   id: "Suzlon Energy",
+//   type: "Stock",
+//   color: "#8B5CF6",
+//   visible: false,
+//   chartType: "line",
+//   currentValue: 18.45,
+//   data: generateSeedData(18.45),
+//   change: { value: 0, percentage: 0 },
+// },
+// {
+//   id: "Zomato",
+//   type: "Stock",
+//   color: "#EC4899",
+//   visible: false,
+//   chartType: "line",
+//   currentValue: 82.3,
+//   data: generateSeedData(82.3),
+//   change: { value: 0, percentage: 0 },
+// },
+// {
+//   id: "TCS",
+//   type: "Stock",
+//   color: "#14B8A6",
+//   visible: false,
+//   chartType: "line",
+//   currentValue: 845.6,
+//   data: generateSeedData(845.6),
+//   change: { value: 0, percentage: 0 },
+// },
+// {
+//   id: "HDFC",
+//   type: "Stock",
+//   color: "#F59E0B",
+//   visible: false,
+//   chartType: "line",
+//   currentValue: 135.6,
+//   data: generateSeedData(135.6),
+//   change: { value: 0, percentage: 0 },
+// },
+// {
+//   id: "ICICI",
+//   type: "Stock",
+//   color: "#EF4444",
+//   visible: false,
+//   chartType: "line",
+//   currentValue: 345.6,
+//   data: generateSeedData(345.6),
+//   change: { value: 0, percentage: 0 },
+// },
+// {
+//   id: "Airtel",
+//   type: "Stock",
+//   color: "#10B981",
+//   visible: false,
+//   chartType: "line",
+//   currentValue: 535.6,
+//   data: generateSeedData(535.6),
+//   change: { value: 0, percentage: 0 },
+// },
+// ];
 const SEED_ASSETS: Asset[] = [
   {
     id: "NIFTY50",
@@ -85,8 +244,8 @@ const SEED_ASSETS: Asset[] = [
     color: "#3B82F6",
     visible: true,
     chartType: "candlestick",
-    currentValue: 425000,
-    data: generateSeedData(425000),
+    currentValue: 22500,
+    data: generateSeedData(22500),
     change: { value: 0, percentage: 0 },
   },
   {
@@ -95,8 +254,8 @@ const SEED_ASSETS: Asset[] = [
     color: "#F59E0B",
     visible: true,
     chartType: "line",
-    currentValue: 64000,
-    data: generateSeedData(64000),
+    currentValue: 5200000,
+    data: generateSeedData(5200000),
     change: { value: 0, percentage: 0 },
   },
   {
@@ -105,19 +264,18 @@ const SEED_ASSETS: Asset[] = [
     color: "#10B981",
     visible: true,
     chartType: "bar",
-    currentValue: 20000,
-    data: generateSeedData(20000),
+    currentValue: 4.25,
+    data: generateSeedData(4.25),
     change: { value: 0, percentage: 0 },
   },
-  // Indices used on the dashboard home page
   {
     id: "SENSEX",
     type: "Index",
     color: "#8B5CF6",
     visible: false,
     chartType: "line",
-    currentValue: 61002,
-    data: generateSeedData(61002),
+    currentValue: 73500,
+    data: generateSeedData(73500),
     change: { value: 0, percentage: 0 },
   },
   {
@@ -126,92 +284,91 @@ const SEED_ASSETS: Asset[] = [
     color: "#EC4899",
     visible: false,
     chartType: "line",
-    currentValue: 43123,
-    data: generateSeedData(43123),
+    currentValue: 49200,
+    data: generateSeedData(49200),
     change: { value: 0, percentage: 0 },
   },
   {
-  id: "Reliance",
-  type: "Stock",
-  color: "#3B82F6",
-  visible: false,
-  chartType: "line",
-  currentValue: 2345.6,
-  data: generateSeedData(2345.6),
-  change: { value: 0, percentage: 0 },
-},
-{
-  id: "Tata Motors",
-  type: "Stock",
-  color: "#6366F1",
-  visible: false,
-  chartType: "line",
-  currentValue: 456.75,
-  data: generateSeedData(456.75),
-  change: { value: 0, percentage: 0 },
-},
-{
-  id: "Suzlon Energy",
-  type: "Stock",
-  color: "#8B5CF6",
-  visible: false,
-  chartType: "line",
-  currentValue: 18.45,
-  data: generateSeedData(18.45),
-  change: { value: 0, percentage: 0 },
-},
-{
-  id: "Zomato",
-  type: "Stock",
-  color: "#EC4899",
-  visible: false,
-  chartType: "line",
-  currentValue: 82.3,
-  data: generateSeedData(82.3),
-  change: { value: 0, percentage: 0 },
-},
-{
-  id: "TCS",
-  type: "Stock",
-  color: "#14B8A6",
-  visible: false,
-  chartType: "line",
-  currentValue: 845.6,
-  data: generateSeedData(845.6),
-  change: { value: 0, percentage: 0 },
-},
-{
-  id: "HDFC",
-  type: "Stock",
-  color: "#F59E0B",
-  visible: false,
-  chartType: "line",
-  currentValue: 135.6,
-  data: generateSeedData(135.6),
-  change: { value: 0, percentage: 0 },
-},
-{
-  id: "ICICI",
-  type: "Stock",
-  color: "#EF4444",
-  visible: false,
-  chartType: "line",
-  currentValue: 345.6,
-  data: generateSeedData(345.6),
-  change: { value: 0, percentage: 0 },
-},
-{
-  id: "Airtel",
-  type: "Stock",
-  color: "#10B981",
-  visible: false,
-  chartType: "line",
-  currentValue: 535.6,
-  data: generateSeedData(535.6),
-  change: { value: 0, percentage: 0 },
-},
+    id: "Reliance",
+    type: "Stock",
+    color: "#3B82F6",
+    visible: false,
+    chartType: "line",
+    currentValue: 2950,
+    data: generateSeedData(2950),
+    change: { value: 0, percentage: 0 },
+  },
+  {
+    id: "TataMotors",
+    type: "Stock",
+    color: "#6366F1",
+    visible: false,
+    chartType: "line",
+    currentValue: 780,
+    data: generateSeedData(780),
+    change: { value: 0, percentage: 0 },
+  },
+  {
+    id: "SuzlonEnergy",
+    type: "Stock",
+    color: "#8B5CF6",
+    visible: false,
+    chartType: "line",
+    currentValue: 68,
+    data: generateSeedData(68),
+    change: { value: 0, percentage: 0 },
+  },
+  {
+    id: "Zomato",
+    type: "Stock",
+    color: "#EC4899",
+    visible: false,
+    chartType: "line",
+    currentValue: 285,
+    data: generateSeedData(285),
+    change: { value: 0, percentage: 0 },
+  },
+  {
+    id: "TCS",
+    type: "Stock",
+    color: "#14B8A6",
+    visible: false,
+    chartType: "line",
+    currentValue: 4100,
+    data: generateSeedData(4100),
+    change: { value: 0, percentage: 0 },
+  },
+  {
+    id: "HDFC",
+    type: "Stock",
+    color: "#F59E0B",
+    visible: false,
+    chartType: "line",
+    currentValue: 1680,
+    data: generateSeedData(1680),
+    change: { value: 0, percentage: 0 },
+  },
+  {
+    id: "ICICI",
+    type: "Stock",
+    color: "#EF4444",
+    visible: false,
+    chartType: "line",
+    currentValue: 1260,
+    data: generateSeedData(1260),
+    change: { value: 0, percentage: 0 },
+  },
+  {
+    id: "Airtel",
+    type: "Stock",
+    color: "#10B981",
+    visible: false,
+    chartType: "line",
+    currentValue: 1650,
+    data: generateSeedData(1650),
+    change: { value: 0, percentage: 0 },
+  },
 ];
-
 export function MarketProvider({ children }: { children: React.ReactNode }) {
   const [assets, setAssets] = useState<Asset[]>(SEED_ASSETS);
   const [tickIntervalMs, setTickIntervalMs] = useState(5000);
