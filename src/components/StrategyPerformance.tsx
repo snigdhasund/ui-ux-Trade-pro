@@ -25,8 +25,10 @@ type Props = {
 
 export default function StrategyPerformance({ strategies, tradeHistory }: Props) {
   // Group trades by strategyKey
-  const stats = strategies.map((s) => {
-    const key = `${s.indicator}-${s.condition}-${s.value}-${s.action}`;
+  const stats = strategies.map((s: any) => {
+    // Same key jo page.jsx mein generate hoti hai
+    const indicatorKey = s.indicator === "Custom" ? s.customIndicatorId : s.indicator;
+    const key = `${indicatorKey}-${s.condition}-${s.value}-${s.action}`;
     const trades = tradeHistory.filter((t) => t.strategyKey === key);
 
     const closed = trades.filter((t) => t.action === "SELL");

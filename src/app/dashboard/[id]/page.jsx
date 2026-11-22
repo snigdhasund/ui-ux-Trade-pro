@@ -3,7 +3,7 @@ import CandlestickChart from "@/components/CandlestickChart";
 import CustomIndicatorBuilder from "@/components/CustomIndicatorBuilder";
 import StrategyPerformance from "@/components/StrategyPerformance";
 import { evaluateCustomIndicator } from "@/utils/customIndicators";
-import { savePreferences } from "@/utils/preferences";
+import { savePreferences,saveArrayPreferences } from "@/utils/preferences";
 import { addNotification } from "@/utils/notifications";
 import { useMarket } from "@/context/MarketContext";
 import AnalyticsDashboard from "@/components/AnalyticsDashboard";
@@ -56,18 +56,6 @@ const fadeInUp = {
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.5 },
 };
-// import {
-//   ResponsiveContainer,
-//   LineChart,
-//   ComposedChart,
-//   Line,
-//   Bar,
-//   XAxis,
-//   YAxis,
-//   CartesianGrid,
-//   Tooltip,
-//   Legend,
-// } from "recharts";
 
 import {
   ResponsiveContainer,
@@ -200,90 +188,6 @@ const Breadcrumb = ({ stock }) => (
   </motion.div>
 );
 
-// const generateRandomData = (currentValue, points, interval) => {
-//   const data = [];
-
-//   let price = currentValue;
-
-//   for (let i = points; i >= 0; i--) {
-//   const date = new Date(Date.now() - i * interval);
-
-//     const open = price;
-
-//     const close = open + (Math.random() - 0.5) * 12;
-
-//     const high = Math.max(open, close) + Math.random() * 5;
-
-//     const low = Math.min(open, close) - Math.random() * 5;
-
-//     data.push({
-//       date,
-//       open,
-//       high,
-//       low,
-//       close,
-//     });
-
-//     price = close;
-//   }
-
-//   return data;
-// };
-
-
-// const generateNextPoint = (currentPrice) => {
-//   const open = currentPrice;
-
-//   const close = open + (Math.random() - 0.5) * 12;
-
-//   const high = Math.max(open, close) + Math.random() * 5;
-
-//   const low = Math.min(open, close) - Math.random() * 5;
-
-//   return {
-//     date: new Date(),
-//     open,
-//     high,
-//     low,
-//     close,
-//   };
-// };
-
-// const getTimeRangeConfig = (timeRange) => {
-//   switch (timeRange) {
-//     case "5M":
-//       return { points: 60, interval: 5 * 1000 };
-
-//     case "10M":
-//       return { points: 60, interval: 10 * 1000 };
-
-//     case "15M":
-//       return { points: 60, interval: 15 * 1000 };
-
-//     case "30M":
-//       return { points: 60, interval: 30 * 1000 };
-
-//     case "1H":
-//       return { points: 60, interval: 60 * 1000 };
-
-//     default:
-//       return { points: 60, interval: 5 * 1000 };
-//   }
-// };
-
-// const createAsset = (id, type, startPrice, color) => ({
-//   id,
-//   type,
-//   color,
-//   visible: true,
-//   chartType: "line",
-//   currentValue: startPrice,
-//   data: generateRandomData(startPrice, 60, 5000),
-//   change: {
-//     value: 0,
-//     percentage: 0,
-//   },
-// });
 
 const StockChart = ({
   stock,
@@ -306,6 +210,10 @@ setTradeHistory,
   toggleIndicator,
   initialPreferences,
   onPreferencesChange,
+  onCreateAlert,
+  alerts, // ← NAYA
+  onSell,
+  onDeleteAlert,
 }) => {
   // const [assets, setAssets] = useState([
   //   createAsset(stock, "Stock", 425000, "#3B82F6"),
@@ -365,6 +273,8 @@ const assetsWithClickedVisible = useMemo(() => {
   // getTimeRangeConfig(selectedTimeRange);
 
   const [patterns, setPatterns] = useState([]);
+    // Local state to track if the stock is currently in portfolio
+  const [locallyInPortfolio, setLocallyInPortfolio] = useState(isInPortfolio);
 const [normalizedChart, setNormalizedChart] = useState(false);
     // const [selectedPattern, setSelectedPattern] = useState("All");
     const [selectedPattern, setSelectedPattern] = useState(
@@ -372,6 +282,7 @@ const [normalizedChart, setNormalizedChart] = useState(false);
 );
 
     const [strategyIndicator, setStrategyIndicator] = useState("RSI");
+    const [strategyCustomIndicatorId, setStrategyCustomIndicatorId] = useState("");
 
 const [strategyCondition, setStrategyCondition] =
   useState("Less Than");
@@ -383,13 +294,46 @@ const [strategyAction, setStrategyAction] =
 
 // const [strategies, setStrategies] =
 //   useState([]);
-const [strategies, setStrategies] = useState(
-  initialPreferences?.strategies ?? []
-);
+const [strategies, setStrategies] = useState(() => {
+  // Pehle initialPreferences check karo
+  if (initialPreferences?.strategies && initialPreferences.strategies.length > 0) {
+    return initialPreferences.strategies;
+  }
+  return [];
+});
 
-const [customIndicators, setCustomIndicators] = useState(
-  initialPreferences?.customIndicators ?? []
-);
+const [customIndicators, setCustomIndicators] = useState(() => {
+  if (initialPreferences?.customIndicators && initialPreferences.customIndicators.length > 0) {
+    return initialPreferences.customIndicators;
+  }
+  return [];
+});
+
+
+
+// useEffect(() => {
+//   if (initialPreferences?.strategies && initialPreferences.strategies.length > 0) {
+//     if (strategies.length === 0) {
+//       setStrategies(initialPreferences.strategies);
+//     }
+//   }
+// }, [initialPreferences?.strategies, strategies.length]);
+
+// Sync local portfolio state when parent's isInPortfolio changes
+useEffect(() => {
+  setLocallyInPortfolio(isInPortfolio);
+}, [isInPortfolio]);
+
+
+
+// useEffect(() => {
+//   if (initialPreferences?.customIndicators && initialPreferences.customIndicators.length > 0) {
+//     if (customIndicators.length === 0) {
+//       setCustomIndicators(initialPreferences.customIndicators);
+//     }
+//   }
+// }, [initialPreferences?.customIndicators, customIndicators.length]);
+
 
   const [signals, setSignals] = useState([]);
 //   const [visibleAnalytics, setVisibleAnalytics] = useState({
@@ -422,6 +366,7 @@ const patternSavedRef = useRef(false);
 const periodsSavedRef = useRef(false);
 const strategiesSavedRef = useRef(false);
 const ciSavedRef = useRef(false);
+const isDeletingRef = useRef(false); // ← NAYA
 
 //   const [smaPeriod, setSmaPeriod] = useState(20);
 
@@ -445,42 +390,6 @@ const [bbPeriod, setBbPeriod] = useState(
 );
 
 
-// // Persist selectedPattern
-// useEffect(() => {
-//   onPreferencesChange?.({ selectedPattern });
-// }, [selectedPattern]);
-
-// // Persist indicator periods (debounced by value change)
-// useEffect(() => {
-//   onPreferencesChange?.({
-//     smaPeriod,
-//     emaPeriod,
-//     rsiPeriod,
-//     bbPeriod,
-//   });
-// }, [smaPeriod, emaPeriod, rsiPeriod, bbPeriod]);
-
-// // // Persist visible analytics toggles
-// // useEffect(() => {
-// //   onPreferencesChange?.({ visibleAnalytics });
-// // }, [visibleAnalytics]);
-
-
-
-// // Persist strategies
-// useEffect(() => {
-//   onPreferencesChange?.({ strategies });
-// }, [strategies]);
-
-// // Persist custom indicators
-// useEffect(() => {
-//   onPreferencesChange?.({ customIndicators });
-// }, [customIndicators]);
-
-// ---- Persistence effects ----
-// IMPORTANT: Skip the very first fire. On initial mount, `initialPreferences`
-// may still be empty (userData not loaded yet). Without skipping, we'd
-// overwrite Firestore with empty arrays/values and wipe user preferences.
 
 // Wait for userData to load before enabling saves
 useEffect(() => {
@@ -514,25 +423,27 @@ useEffect(() => {
   });
 }, [smaPeriod, emaPeriod, rsiPeriod, bbPeriod]);
 
-// Persist strategies
-useEffect(() => {
-  if (!prefsLoadedRef.current) return;
-  if (!strategiesSavedRef.current) {
-    strategiesSavedRef.current = true;
-    return;
-  }
-  onPreferencesChange?.({ strategies });
-}, [strategies]);
+// // Persist strategies (only after loaded from Firestore)
+// useEffect(() => {
+//   if (!prefsLoadedRef.current) return;
+//   if (!initialPreferences?.strategies) return; // Wait for initial data
+//   if (!strategiesSavedRef.current) {
+//     strategiesSavedRef.current = true;
+//     return;
+//   }
+//   onPreferencesChange?.({ strategies });
+// }, [strategies, initialPreferences?.strategies]);
 
-// Persist custom indicators
-useEffect(() => {
-  if (!prefsLoadedRef.current) return;
-  if (!ciSavedRef.current) {
-    ciSavedRef.current = true;
-    return;
-  }
-  onPreferencesChange?.({ customIndicators });
-}, [customIndicators]);
+// // Persist custom indicators (only after loaded)
+// useEffect(() => {
+//   if (!prefsLoadedRef.current) return;
+//   if (!initialPreferences?.customIndicators) return;
+//   if (!ciSavedRef.current) {
+//     ciSavedRef.current = true;
+//     return;
+//   }
+//   onPreferencesChange?.({ customIndicators });
+// }, [customIndicators, initialPreferences?.customIndicators]);
 
   
   const patternSummary = useMemo(() => {
@@ -576,6 +487,17 @@ const currentAsset =
   FALLBACK_ASSET;
 
 // const visiblePoints = points;
+// Real-time check: If portfolio changes, update the button state
+// This is placed here because currentAsset is defined above
+useEffect(() => {
+  // Find if current stock exists in portfolio with quantity > 0
+  const stockInPortfolio = portfolio.find(
+    (p) => p.id === currentAsset.id && p.quantity > 0
+  );
+  
+  // Update local state based on existence
+  setLocallyInPortfolio(!!stockInPortfolio);
+}, [portfolio, currentAsset.id]);
 const visibleAssets = useMemo(() => {
   const seen = new Set();
   return assets
@@ -1003,17 +925,34 @@ row.BBLower = Number.isFinite(
   });
 
 
-  const addStrategy = () => {
-  const newStrategy = {
-  indicator: strategyIndicator,
-  condition: strategyCondition,
-  value: strategyValue,
-  action: strategyAction,
-  enabled: true,
-};
+  const addStrategy = async () => {
+    if (strategyIndicator === "Custom" && !strategyCustomIndicatorId) {
+      toast.error("Please select a custom indicator");
+      return;
+    }
 
-  setStrategies((prev) => [...prev, newStrategy]);
-};
+    const newStrategy = {
+      indicator: strategyIndicator,
+      customIndicatorId: strategyIndicator === "Custom" ? strategyCustomIndicatorId : null,
+      condition: strategyCondition,
+      value: strategyValue,
+      action: strategyAction,
+      enabled: true,
+      repeat: true,
+    };
+
+    const updated = [...strategies, newStrategy];
+    setStrategies(updated);
+
+    // Save to Firestore immediately
+    if (user) {
+      try {
+        await saveArrayPreferences(user.uid, "strategies", updated);
+      } catch (e) {
+        console.error("Failed to save strategy:", e);
+      }
+    }
+  };
 
 // const evaluateStrategies = async () => {
 //   const newSignals = [];
@@ -1310,12 +1249,31 @@ const evaluateStrategies = () => {
       : 0,
   };
 
+  // Add Custom Indicators to latest/prev
+  customIndicators.forEach((ci) => {
+    if (ci.enabled && customIndicatorData) {
+      const data = customIndicatorData.find((d) => d.id === ci.id);
+      if (data) {
+        latest[`Custom-${ci.id}`] = data.values[data.values.length - 1] ?? 0;
+      }
+    }
+  });
+
   const prev = {
     RSI: rsiData[rsiData.length - 2],
     SMA: smaData[smaData.length - 2],
     EMA: emaData[emaData.length - 2],
     Bollinger: bollingerData[bollingerData.length - 2]?.middle,
   };
+
+  customIndicators.forEach((ci) => {
+    if (ci.enabled && customIndicatorData) {
+      const data = customIndicatorData.find((d) => d.id === ci.id);
+      if (data) {
+        prev[`Custom-${ci.id}`] = data.values[data.values.length - 2];
+      }
+    }
+  });
 
   const currentPrice =
     currentAsset.data[currentAsset.data.length - 1]?.close ?? 0;
@@ -1331,10 +1289,24 @@ const evaluateStrategies = () => {
   for (const strategy of strategies) {
     if (!strategy.enabled) continue;
 
-    const key = `${strategy.indicator}-${strategy.condition}-${strategy.value}-${strategy.action}`;
-    const currentValue = latest[strategy.indicator] ?? 0;
+    const key = `${strategy.indicator === "Custom" ? strategy.customIndicatorId : strategy.indicator}-${strategy.condition}-${strategy.value}-${strategy.action}`;
+    const currentValue = strategy.indicator === "Custom" 
+      ? latest[`Custom-${strategy.customIndicatorId}`] ?? 0
+      : latest[strategy.indicator] ?? 0;
 
     let matched = false;
+
+    // ---- NAYA: Position Check ----
+    // Agar SELL strategy hai, to pehle check karo ki stock portfolio me hai ya nahi
+    if (strategy.action === "SELL") {
+      const hasPosition = portfolio.some(
+        (p) => p.id === currentAsset.id && p.quantity > 0
+      );
+      if (!hasPosition) {
+        // Position nahi hai, to SELL strategy skip karo
+        continue; // ← loop ke next strategy pe jao
+      }
+    }
 
     // Simple threshold conditions
     if (strategy.condition === "Less Than" && currentValue < strategy.value) {
@@ -1430,22 +1402,18 @@ const MIN_COOLDOWN_MS = 60 * 1000; // 60 seconds
 const lastFire = lastFireTimeRef.current[key] || 0;
 const cooldownDone = Date.now() - lastFire >= MIN_COOLDOWN_MS;
 
+// If condition is false, reset the executed flag (allow future fire)
 if (!matched && wasExecuted) {
-  const falseStreakKey = `${key}__falseStreak`;
-  const currentStreak = cooldownRef.current[falseStreakKey] || 0;
-
-  // Require cooldown AND 2 consecutive false ticks to reset
-  if (cooldownDone && currentStreak >= 1) {
-    const idx = nextExecuted.indexOf(key);
-    if (idx !== -1) nextExecuted.splice(idx, 1);
-    cooldownRef.current[falseStreakKey] = 0;
-  } else {
-    cooldownRef.current[falseStreakKey] = currentStreak + 1;
-  }
-} else if (matched) {
-  // Reset the false-streak counter when condition is true again
+  const idx = nextExecuted.indexOf(key);
+  if (idx !== -1) nextExecuted.splice(idx, 1);
   const falseStreakKey = `${key}__falseStreak`;
   cooldownRef.current[falseStreakKey] = 0;
+} 
+// If condition is STILL true but 60s passed, reset ONLY if 'repeat' is enabled
+else if (matched && wasExecuted && cooldownDone && strategy.repeat) {
+  const idx = nextExecuted.indexOf(key);
+  if (idx !== -1) nextExecuted.splice(idx, 1);
+  // Don't reset falseStreak counter here, it's for cooldown tracking
 }
   }
 
@@ -1492,19 +1460,9 @@ if (!matched && wasExecuted) {
           date: new Date().toISOString(),
         }));
 
-        // Read current doc first, then write merged array.
-        // This avoids arrayUnion silently failing on undefined fields.
-        getDoc(doc(db, "users", user.uid)).then((snap) => {
-          const existingTx = snap.exists()
-            ? snap.data().transactions || []
-            : [];
-          const mergedTx = [
-            ...transactionsFromTrades,
-            ...existingTx,
-          ];
-          return updateDoc(doc(db, "users", user.uid), {
-            transactions: mergedTx,
-          });
+        // Bina getDoc ke direct update karo (Quota save)
+        updateDoc(doc(db, "users", user.uid), {
+          transactions: arrayUnion(...transactionsFromTrades), 
         }).catch((err) =>
           console.error("Transactions persist failed:", err)
         );
@@ -1675,6 +1633,7 @@ const id = setTimeout(() => {
   latestSMA,
   latestEMA,
   latestBB,
+  portfolio, // ← NAYA: Portfolio change pe bhi evaluate karo
 ]);
 
 
@@ -1731,6 +1690,7 @@ const id = setTimeout(() => {
         </div>
         <div className="flex flex-wrap gap-2 mt-4 md:mt-0 w-full md:w-auto">
           <motion.button
+            onClick={onCreateAlert} // ← NAYA
             className="bg-blue-500 text-white w-full sm:w-auto px-4 py-2 rounded hover:bg-blue-600 transition-colors flex items-center"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -1751,25 +1711,29 @@ const id = setTimeout(() => {
             <Eye className="mr-2" size={16} />
             {isInWatchlist ? "Remove from Watchlist" : "Add to Watchlist"}
           </motion.button>
+          {/* BUY BUTTON - Hamesha dikhega */}
           <motion.button
-            onClick={() => {
-              if (isInPortfolio) {
-                removeFromPortfolio();
-              } else {
-                addToPortfolio();
-              }
-            }}
-            className={`w-full sm:w-auto px-4 py-2 rounded flex items-center transition-colors ${
-              isInPortfolio
-                ? "bg-red-600 hover:bg-red-700"
-                : "bg-purple-700 hover:bg-purple-600"
-            }`}
+            onClick={addToPortfolio}
+            className="w-full sm:w-auto px-4 py-2 rounded flex items-center transition-colors bg-green-600 hover:bg-green-700 text-white"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
             <PlusCircle className="mr-2" size={16} />
-            {isInPortfolio ? "Remove from Portfolio" : "Add to Portfolio"}
+            Buy
           </motion.button>
+
+          {/* SELL BUTTON - Sirf tab dikhega jab portfolio mein stock ho */}
+                    {locallyInPortfolio && (
+            <motion.button
+              onClick={() => onSell()} // <-- YEH CALL KARO
+              className="w-full sm:w-auto px-4 py-2 rounded flex items-center transition-colors bg-red-600 hover:bg-red-700 text-white"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <ArrowDownRight className="mr-2" size={16} />
+              Sell
+            </motion.button>
+          )}
         </div>
       </div>
 <div className="flex overflow-x-auto flex-wrap gap-2 pb-2 mb-4 scrollbar-hide">
@@ -1866,8 +1830,50 @@ const id = setTimeout(() => {
 
 </div>
 
+{/* --- NAYA: Active Alerts Section --- */}
+<div className="bg-gray-800 rounded-xl p-5 mb-5 border border-gray-700">
+  <h3 className="text-lg font-bold text-white mb-4">
+    🔔 Active Alerts for {currentAsset.id}
+  </h3>
+
+  {alerts.filter((a) => a.stock === currentAsset.id).length === 0 ? (
+    <div className="text-gray-400 text-sm">
+      No alerts set for this stock.
+    </div>
+  ) : (
+    <div className="space-y-3">
+      {alerts
+        .filter((a) => a.stock === currentAsset.id)
+        .map((alert) => (
+          <div
+            key={alert.id}
+            className="bg-gray-700 rounded-lg p-3 flex justify-between items-center"
+          >
+            <div>
+              <div className="text-white font-semibold">
+                {alert.condition === "Above" ? "Goes Above" : "Goes Below"} ₹
+                {alert.targetPrice}
+              </div>
+              <div className="text-xs text-gray-400">
+                {alert.triggered ? "✅ Triggered" : "⏳ Active"}
+              </div>
+            </div>
+            <button
+              onClick={() => onDeleteAlert(alert.id)} // <-- Ab seedha parent ko call karega
+              className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs"
+            >
+              Delete
+            </button>
+          </div>
+        ))}
+    </div>
+  )}
+</div>
+
 
 {/* <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 mb-6">
+
+
 
   <h2 className="text-xl font-bold text-white mb-5">
     Advanced Analytics Dashboard
@@ -2292,16 +2298,17 @@ const id = setTimeout(() => {
 
 <div className="w-full">
   <MultiAssetChart
-    assets={assetsWithClickedVisible}
-    patterns={patterns}
-    selectedPattern={selectedPattern}
-    selectedIndicators={selectedIndicators}
-    smaData={smaData}
-    emaData={emaData}
-    bollingerData={bollingerData}
-    customIndicatorData={customIndicatorData}
-    normalized={normalizedChart}
-  />
+  assets={assetsWithClickedVisible}
+  patterns={patterns}
+  selectedPattern={selectedPattern}
+  selectedIndicators={selectedIndicators}
+  smaData={smaData}
+  emaData={emaData}
+  bollingerData={bollingerData}
+  customIndicatorData={customIndicatorData}
+  normalized={normalizedChart}
+  selectedTimeRange={selectedTimeRange}
+/>
 </div>
 
       {selectedIndicators.includes("RSI") && (
@@ -2336,6 +2343,9 @@ const id = setTimeout(() => {
   visibleAnalytics={visibleAnalytics}
   setVisibleAnalytics={setVisibleAnalytics}
   onPreferencesChange={onPreferencesChange}
+  smaPeriod={smaPeriod}
+  emaPeriod={emaPeriod}
+  rsiPeriod={rsiPeriod}
 />
 
       <h3 className="text-xl font-semibold text-white mt-6 mb-3">Assets</h3>
@@ -2493,9 +2503,34 @@ className="w-full bg-gray-700 p-2 rounded mt-2"
 
 </div>
 
+{/* <CustomIndicatorBuilder
+  indicators={customIndicators}
+  onChange={async (updated) => {
+    // 1. Pehle state update karo (UI turant update hoga)
+    setCustomIndicators(updated);
+    
+    // 2. Seedha Firestore mein save karo (No useEffect dependency)
+    if (user) {
+      try {
+        await savePreferences(user.uid, { customIndicators: updated });
+      } catch (e) {
+        console.error("Failed to save custom indicators:", e);
+      }
+    }
+  }}
+/> */}
 <CustomIndicatorBuilder
   indicators={customIndicators}
-  onChange={setCustomIndicators}
+  onChange={async (updated) => {
+    setCustomIndicators(updated);
+    if (user) {
+      try {
+        await saveArrayPreferences(user.uid, "customIndicators", updated);
+      } catch (e) {
+        console.error("Failed to save custom indicators:", e);
+      }
+    }
+  }}
 />
 
 <div className="bg-gray-800 rounded-xl border border-gray-700 p-5 mt-8">
@@ -2506,17 +2541,36 @@ className="w-full bg-gray-700 p-2 rounded mt-2"
 
   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
-    <select
-value={strategyIndicator}
-onChange={(e)=>{
-    setStrategyIndicator(e.target.value);
-}}
->
-      <option>RSI</option>
-      <option>SMA</option>
-      <option>EMA</option>
-      <option>Bollinger</option>
-    </select>
+    <div className="flex flex-col gap-2">
+      <select
+        value={strategyIndicator}
+        onChange={(e) => {
+          setStrategyIndicator(e.target.value);
+        }}
+        className="bg-gray-700 p-2 rounded"
+      >
+        <option>RSI</option>
+        <option>SMA</option>
+        <option>EMA</option>
+        <option>Bollinger</option>
+        <option>Custom</option>
+      </select>
+
+      {strategyIndicator === "Custom" && (
+        <select
+          value={strategyCustomIndicatorId}
+          onChange={(e) => setStrategyCustomIndicatorId(e.target.value)}
+          className="bg-gray-700 p-2 rounded"
+        >
+          <option value="">Select Custom Indicator</option>
+          {customIndicators.map((ci) => (
+            <option key={ci.id} value={ci.id}>
+              {ci.name}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
 
     <select
   value={strategyCondition}
@@ -2590,7 +2644,9 @@ strategies.map((strategy,index)=>(
 >
 
 <div className="font-semibold">
-  {strategy.indicator} {strategy.condition} {strategy.value}
+  {strategy.indicator === "Custom" 
+    ? customIndicators.find(c => c.id === strategy.customIndicatorId)?.name || "Custom"
+    : strategy.indicator} {strategy.condition} {strategy.value}
 </div>
 
 <div
@@ -2606,18 +2662,15 @@ strategies.map((strategy,index)=>(
 <div className="flex items-center gap-2">
 
   <button
-    onClick={() =>
-      setStrategies((prev) =>
-        prev.map((item, i) =>
-          i === index
-            ? {
-                ...item,
-                enabled: !item.enabled,
-              }
-            : item
-        )
-      )
-    }
+    onClick={async () => {
+      const updated = strategies.map((item, i) =>
+        i === index ? { ...item, enabled: !item.enabled } : item
+      );
+      setStrategies(updated);
+      if (user) {
+        await saveArrayPreferences(user.uid, "strategies", updated);
+      }
+    }}
     className={`px-3 py-1 rounded text-sm ${
       strategy.enabled
         ? "bg-green-600 hover:bg-green-700"
@@ -2625,6 +2678,26 @@ strategies.map((strategy,index)=>(
     }`}
   >
     {strategy.enabled ? "Enabled" : "Disabled"}
+  </button>
+
+    {/* NAYA: Repeat Toggle */}
+  <button
+    onClick={async () => {
+      const updated = strategies.map((item, i) =>
+        i === index ? { ...item, repeat: !item.repeat } : item
+      );
+      setStrategies(updated);
+      if (user) {
+        await saveArrayPreferences(user.uid, "strategies", updated);
+      }
+    }}
+    className={`px-3 py-1 rounded text-sm ${
+      strategy.repeat !== false
+        ? "bg-blue-600 hover:bg-blue-700"
+        : "bg-gray-600 hover:bg-gray-700"
+    }`}
+  >
+    {strategy.repeat !== false ? "Repeat: ON" : "Repeat: OFF"}
   </button>
 
   <div
@@ -2638,11 +2711,21 @@ strategies.map((strategy,index)=>(
   </div>
 
   <button
-    onClick={() =>
-      setStrategies((prev) =>
-        prev.filter((_, i) => i !== index)
-      )
-    }
+    onClick={async () => {
+      isDeletingRef.current = true; // ← Lock laga do
+      const updated = strategies.filter((_, i) => i !== index);
+      setStrategies(updated);
+      if (user) {
+        try {
+          await saveArrayPreferences(user.uid, "strategies", updated);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      setTimeout(() => {
+        isDeletingRef.current = false; // ← 1 second baad lock khol do
+      }, 1000);
+    }}
     className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
   >
     Delete
@@ -3407,19 +3490,28 @@ const OpenInterest = () => {
 
 export default function GrowwNIFTY50Page() {
   const { id } = useParams();
-  const { user, userData, loading: authLoading } = useAuth();
+  const { user, userData, loading: authLoading, refreshUserData } = useAuth();
   const { getPrice, setTickIntervalMs } = useMarket();
   const [loading, setLoading] = useState(true);
   const [isInWatchlist, setIsInWatchlist] = useState(false);
   const [watchlist, setWatchlist] = useState([]);
   const [portfolio, setPortfolio] = useState([]);
   const [tradeHistory, setTradeHistory] = useState([]);
+  const [realizedPL, setRealizedPL] = useState(0); 
   const [isInPortfolio, setIsInPortfolio] = useState(false);
   const [selectedTimeRange, setSelectedTimeRange] = useState("5M");
   const [selectedIndicators, setSelectedIndicators] = useState([]);
   const [showBuyModal, setShowBuyModal] = useState(false);
+    const [showSellModal, setShowSellModal] = useState(false);
+  const [sellQuantity, setSellQuantity] = useState(1);
 
   const [buyQuantity, setBuyQuantity] = useState("1");
+    // Alert States
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [alertTargetPrice, setAlertTargetPrice] = useState("");
+  const [alertCondition, setAlertCondition] = useState("Above"); // 'Above' or 'Below'
+  const [alerts, setAlerts] = useState([]);
+    const alertsRef = useRef(alerts); // ← NAYA
   useEffect(() => {
     setTimeout(() => setLoading(false), 2000);
   }, []);
@@ -3485,6 +3577,7 @@ useEffect(() => {
     setWatchlist(data.watchlist || []);
     setPortfolio(data.portfolio || []);
     setTradeHistory(data.tradeHistory || []);
+    setAlerts(data.alerts || []); // ← NAYA
 
     // Load preferences with safe defaults
     setSelectedTimeRange(prefs.selectedTimeRange ?? "5M");
@@ -3496,6 +3589,89 @@ useEffect(() => {
 
   fetchUserState();
 }, [user, id]);
+  // Keep alertsRef in sync with alerts state
+  useEffect(() => {
+    alertsRef.current = alerts;
+  }, [alerts]);
+  // --- NAYA: Alert Checker Engine (Fixed Quota) ---
+  useEffect(() => {
+    if (!user) return;
+
+    let isRunning = false;
+
+    const checkAlerts = async () => {
+      if (isRunning) return;
+      isRunning = true;
+
+      try {
+        // Agar pichli baar quota error aaya tha, toh 10 second wait karo
+        if (window._alertQuotaCooldown && Date.now() < window._alertQuotaCooldown) {
+           return; 
+        }
+
+        const livePrice = getPrice(id);
+        if (!livePrice) return;
+
+        const currentAlerts = alertsRef.current || [];
+        if (currentAlerts.length === 0) return;
+
+        let hasChanges = false;
+        const updatedAlerts = currentAlerts.map((alert) => {
+          if (alert.triggered) return alert;
+          if (alert.stock !== id) return alert;
+
+          let shouldTrigger = false;
+          if (alert.condition === "Above" && livePrice >= alert.targetPrice) {
+            shouldTrigger = true;
+          } else if (alert.condition === "Below" && livePrice <= alert.targetPrice) {
+            shouldTrigger = true;
+          }
+
+          if (shouldTrigger) {
+            hasChanges = true;
+            
+            // 1. Send to Notification Bell
+            addNotification(user.uid, {
+              type: "ALERT",
+              title: `Price Alert: ${alert.stock}`,
+              message: `${alert.stock} crossed ₹${alert.targetPrice} (${alert.condition}) — Current: ₹${livePrice.toFixed(2)}`,
+            }).catch((e) => console.error("Notification failed:", e));
+
+            // 2. Show Toast
+            toast.success(`🚨 Alert: ${alert.stock} crossed ₹${alert.targetPrice}`);
+            
+            // 3. Mark as triggered
+            return { ...alert, triggered: true };
+          }
+          return alert;
+        });
+
+        // ONLY write to Firestore if something ACTUALLY changed
+        if (hasChanges) {
+          setAlerts(updatedAlerts);
+          try {
+            await updateDoc(doc(db, "users", user.uid), {
+              alerts: updatedAlerts,
+            });
+          } catch (e) {
+            console.error("Firestore write failed (quota?):", e);
+            // Quota error aaya, toh 10 second ka cooldown set karo
+            window._alertQuotaCooldown = Date.now() + 10000;
+          }
+        }
+      } finally {
+        isRunning = false;
+      }
+    };
+
+    // Check immediately
+    checkAlerts();
+
+    // Check every 15 seconds (not 3!) to save Firestore quota
+    const interval = setInterval(checkAlerts, 15000);
+    return () => clearInterval(interval);
+  }, [user, id]); // <--- getPrice hata diya
+
   if (loading) {
     return (
       <div className="bg-gray-900 min-h-screen flex items-center justify-center">
@@ -3535,7 +3711,46 @@ useEffect(() => {
     );
   }
 
+  // --- NAYA: Create Alert Function ---
+  const handleCreateAlert = async () => {
+    if (!user) {
+      toast.error("Please login first");
+      return;
+    }
 
+    const targetPrice = Number(alertTargetPrice);
+    if (!targetPrice || targetPrice <= 0) {
+      toast.error("Please enter a valid target price");
+      return;
+    }
+
+    const newAlert = {
+      id: Date.now(),
+      stock: id,
+      targetPrice,
+      condition: alertCondition, // Above or Below
+      createdAt: new Date().toISOString(),
+      triggered: false,
+    };
+
+    // NAYA: Pehle Firestore se existing alerts fetch karo
+
+    const updatedAlerts = [...alerts, newAlert];
+    setAlerts(updatedAlerts);
+    const userRef = doc(db, "users", user.uid);
+
+    try {
+      await updateDoc(userRef, {
+        alerts: updatedAlerts,
+      });
+      toast.success(`Alert set for ${id} at ₹${targetPrice}`);
+      setShowAlertModal(false);
+      setAlertTargetPrice("");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to create alert");
+    }
+  };
   const addToWatchlist = async () => {
     if (!user) {
       toast.error("Please login first");
@@ -3652,6 +3867,70 @@ useEffect(() => {
 //       toast.error("Purchase failed");
 //     }
 //   };
+// const confirmBuy = async () => {
+//   if (!user) {
+//     toast.error("Please login first");
+//     return;
+//   }
+
+//   const quantity = Number(buyQuantity);
+//   if (!quantity || quantity < 1) {
+//     toast.error("Please enter a valid quantity");
+//     return;
+//   }
+
+//   // LIVE price from MarketContext
+//   const currentPrice = getPrice(id) ?? 425000;
+
+//   const transactionCost = currentPrice * quantity * 0.005;
+//   const transaction = {
+//     type: "BUY",
+//     stock: id,
+//     quantity,
+//     price: currentPrice,
+//     fee: transactionCost,
+//     total: currentPrice * quantity + transactionCost,
+//     date: new Date().toISOString(),
+//   };
+
+//   const asset = {
+//     id,
+//     quantity,
+//     avgPrice: currentPrice,
+//     currentPrice,
+//     previousPrice: currentPrice,
+//     transactionCost,
+//     costBasis: currentPrice * quantity + transactionCost,
+//     unrealizedPL: 0,
+//     realizedPL: 0,
+//     returnPercentage: 0,
+//     portfolioValue: currentPrice * quantity,
+//   };
+
+//   const userRef = doc(db, "users", user.uid);
+//   try {
+//     await updateDoc(userRef, {
+//       portfolio: arrayUnion(asset),
+//       transactions: arrayUnion(transaction),
+//     });
+//     setPortfolio((prev) => [...prev, asset]);
+//     setIsInPortfolio(true);
+//     setShowBuyModal(false);
+//     setBuyQuantity(1);
+//     toast.success(`Bought ${quantity} × ${id} @ ₹${currentPrice.toFixed(2)}`);
+
+//     // Save notification
+//     await addNotification(user.uid, {
+//       type: "BUY",
+//       title: `Bought ${id}`,
+//       message: `${quantity} share(s) @ ₹${currentPrice.toFixed(2)} · Total ₹${(
+//         currentPrice * quantity
+//       ).toFixed(2)}`,
+//     });
+//   } catch (error) {
+//     toast.error("Purchase failed");
+//   }
+// };
 const confirmBuy = async () => {
   if (!user) {
     toast.error("Please login first");
@@ -3678,41 +3957,83 @@ const confirmBuy = async () => {
     date: new Date().toISOString(),
   };
 
-  const asset = {
-    id,
-    quantity,
-    avgPrice: currentPrice,
-    currentPrice,
-    previousPrice: currentPrice,
-    transactionCost,
-    costBasis: currentPrice * quantity + transactionCost,
-    unrealizedPL: 0,
-    realizedPL: 0,
-    returnPercentage: 0,
-    portfolioValue: currentPrice * quantity,
-  };
-
   const userRef = doc(db, "users", user.uid);
+  
   try {
+    // 1. Pehle current portfolio fetch karo
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) {
+      toast.error("User data not found");
+      return;
+    }
+
+    const userData = userSnap.data();
+    const currentPortfolio = userData.portfolio || [];
+    
+    // 2. Check karo ki stock pehle se hai ya nahi
+    const existingIndex = currentPortfolio.findIndex((item) => item.id === id);
+    
+    let updatedPortfolio;
+
+    if (existingIndex !== -1) {
+      // Stock pehle se hai -> Quantity badhao aur Avg Price recalculate karo
+      const existingAsset = currentPortfolio[existingIndex];
+      const totalQty = existingAsset.quantity + quantity;
+      const totalCost = (existingAsset.avgPrice * existingAsset.quantity) + (currentPrice * quantity);
+      const newAvgPrice = totalCost / totalQty;
+
+      updatedPortfolio = currentPortfolio.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              quantity: totalQty,
+              avgPrice: newAvgPrice,
+              currentPrice: currentPrice,
+              portfolioValue: currentPrice * totalQty,
+              costBasis: totalCost + (item.transactionCost || 0), // Optional: fees add
+            }
+          : item
+      );
+    } else {
+      // Naya stock hai -> Naya item add karo
+      const newAsset = {
+        id,
+        quantity,
+        avgPrice: currentPrice,
+        currentPrice,
+        previousPrice: currentPrice,
+        transactionCost,
+        costBasis: currentPrice * quantity + transactionCost,
+        unrealizedPL: 0,
+        realizedPL: 0,
+        returnPercentage: 0,
+        portfolioValue: currentPrice * quantity,
+      };
+      updatedPortfolio = [...currentPortfolio, newAsset];
+    }
+
+    // 3. Firestore update karo
     await updateDoc(userRef, {
-      portfolio: arrayUnion(asset),
+      portfolio: updatedPortfolio,
       transactions: arrayUnion(transaction),
     });
-    setPortfolio((prev) => [...prev, asset]);
+
+    // 4. Local state update karo (UI turant change hoga)
+    setPortfolio(updatedPortfolio);
     setIsInPortfolio(true);
     setShowBuyModal(false);
     setBuyQuantity(1);
+    
     toast.success(`Bought ${quantity} × ${id} @ ₹${currentPrice.toFixed(2)}`);
 
-    // Save notification
+    // 5. Notification bhejo
     await addNotification(user.uid, {
       type: "BUY",
       title: `Bought ${id}`,
-      message: `${quantity} share(s) @ ₹${currentPrice.toFixed(2)} · Total ₹${(
-        currentPrice * quantity
-      ).toFixed(2)}`,
+      message: `${quantity} share(s) @ ₹${currentPrice.toFixed(2)} · Total ₹${(currentPrice * quantity).toFixed(2)}`,
     });
   } catch (error) {
+    console.error("Purchase failed:", error);
     toast.error("Purchase failed");
   }
 };
@@ -3736,110 +4057,179 @@ const confirmBuy = async () => {
 
 
 
+//   const removeFromPortfolio = async () => {
+//   if (!user) return;
+
+//   try {
+//     const userRef = doc(db, "users", user.uid);
+
+//     const snap = await getDoc(userRef);
+
+//     if (!snap.exists()) return;
+
+//     const data = snap.data();
+
+//     const asset = data.portfolio.find(
+//       (item) => item.id === id
+//     );
+
+//     // NAYA: Safety check — agar position nahi hai to error do
+//     if (!asset || asset.quantity <= 0) {
+//       toast.error("You don't own this stock anymore");
+//       return;
+//     }
+
+//     const sellPrice = asset.currentPrice;
+
+//     const transactionFee =
+//       sellPrice * asset.quantity * 0.005;
+
+//     // Calculate realized P/L for this sell
+//     const sellRealizedPL =
+//       (sellPrice - asset.avgPrice) * asset.quantity - transactionFee;
+
+//     const sellTransaction = {
+//       type: "SELL",
+//       stock: id,
+//       quantity: asset.quantity,
+//       price: sellPrice,
+//       fee: transactionFee,
+//       total:
+//         sellPrice * asset.quantity -
+//         transactionFee,
+//       realizedPL: sellRealizedPL,
+//       date: new Date().toISOString(),
+//     };
+
+//     const updatedPortfolio =
+//       data.portfolio.filter(
+//         (item) => item.id !== id
+//       );
+
+//     // Accumulate total realized P/L (never resets)
+//     const existingRealizedPL = data.realizedPL || 0;
+//     const newRealizedPL = existingRealizedPL + sellRealizedPL;
+
+//     await updateDoc(userRef, {
+//       portfolio: updatedPortfolio,
+//       transactions: arrayUnion(sellTransaction),
+//       realizedPL: newRealizedPL,
+//     });
+
+//     setPortfolio(updatedPortfolio);
+//     setIsInPortfolio(false);
+
+//     toast.success(`${id} sold successfully`);
+
+//     // Save notification
+//     await addNotification(user.uid, {
+//       type: "SELL",
+//       title: `Sold ${id}`,
+//       message: `${asset.quantity} share(s) @ ₹${sellPrice.toFixed(2)} · Total ₹${(
+//         sellPrice * asset.quantity
+//       ).toFixed(2)}`,
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     toast.error("Something went wrong");
+//   }
+// };
   const removeFromPortfolio = async () => {
-  if (!user) return;
+    if (!user) return;
 
-  try {
-    const userRef = doc(db, "users", user.uid);
+    try {
+      const userRef = doc(db, "users", user.uid);
+      const snap = await getDoc(userRef);
+      if (!snap.exists()) return;
 
-    const snap = await getDoc(userRef);
+      const data = snap.data();
+      const asset = data.portfolio.find((item) => item.id === id);
 
-    if (!snap.exists()) return;
+      // Safety check
+      if (!asset || asset.quantity <= 0) {
+        toast.error("You don't own this stock anymore");
+        setShowSellModal(false);
+        return;
+      }
 
-    const data = snap.data();
+      // Clamp sell quantity
+      const safeQuantity = Math.min(Math.max(1, Math.floor(sellQuantity)), asset.quantity);
+      
+      const livePrice = getPrice(id) ?? asset.currentPrice ?? asset.avgPrice;
+      const transactionFee = livePrice * safeQuantity * 0.005;
+      const sellRealizedPL = (livePrice - asset.avgPrice) * safeQuantity - transactionFee;
 
-    const asset = data.portfolio.find(
-      (item) => item.id === id
-    );
+      const sellTransaction = {
+        type: "SELL",
+        stock: id,
+        quantity: safeQuantity,
+        price: livePrice,
+        fee: transactionFee,
+        total: livePrice * safeQuantity - transactionFee,
+        realizedPL: sellRealizedPL,
+        date: new Date().toISOString(),
+      };
 
-    if (!asset) return;
+      let updatedPortfolio;
+      const remainingQty = asset.quantity - safeQuantity;
 
-    const sellPrice = asset.currentPrice;
+      if (remainingQty <= 0) {
+        // Pura sell ho gaya
+        updatedPortfolio = data.portfolio.filter((item) => item.id !== id);
+      } else {
+        // Partial sell
+        updatedPortfolio = data.portfolio.map((item) => 
+          item.id === id 
+            ? { 
+                ...item, 
+                quantity: remainingQty,
+                currentPrice: livePrice,
+                portfolioValue: livePrice * remainingQty,
+                realizedPL: (item.realizedPL || 0) + sellRealizedPL
+              } 
+            : item
+        );
+      }
 
-    const transactionFee =
-      sellPrice * asset.quantity * 0.005;
+      const existingRealizedPL = data.realizedPL || 0;
+      const newRealizedPL = existingRealizedPL + sellRealizedPL;
 
-    // Calculate realized P/L for this sell
-    const sellRealizedPL =
-      (sellPrice - asset.avgPrice) * asset.quantity - transactionFee;
+      await updateDoc(userRef, {
+        portfolio: updatedPortfolio,
+        transactions: arrayUnion(sellTransaction),
+        realizedPL: newRealizedPL,
+      });
 
-    const sellTransaction = {
-      type: "SELL",
-      stock: id,
-      quantity: asset.quantity,
-      price: sellPrice,
-      fee: transactionFee,
-      total:
-        sellPrice * asset.quantity -
-        transactionFee,
-      realizedPL: sellRealizedPL,
-      date: new Date().toISOString(),
-    };
+      setPortfolio(updatedPortfolio);
+      setRealizedPL(newRealizedPL);
+      
+      // Parent state update
+      if (remainingQty <= 0) {
+        setIsInPortfolio(false);
+      }
 
-    const updatedPortfolio =
-      data.portfolio.filter(
-        (item) => item.id !== id
-      );
+      toast.success(`Sold ${safeQuantity} × ${id}`);
 
-    // Accumulate total realized P/L (never resets)
-    const existingRealizedPL = data.realizedPL || 0;
-    const newRealizedPL = existingRealizedPL + sellRealizedPL;
+      await addNotification(user.uid, {
+        type: "SELL",
+        title: `Sold ${id}`,
+        message: `${safeQuantity} share(s) @ ₹${livePrice.toFixed(2)}`,
+      });
 
-    await updateDoc(userRef, {
-      portfolio: updatedPortfolio,
-      transactions: arrayUnion(sellTransaction),
-      realizedPL: newRealizedPL,
-    });
+      setShowSellModal(false);
+      setSellQuantity(1);
+    } catch (error) {
+      console.error(error);
+      toast.error("Something went wrong");
+    }
+  };
 
-    setPortfolio(updatedPortfolio);
-    setIsInPortfolio(false);
-
-    toast.success(`${id} sold successfully`);
-
-    // Save notification
-    await addNotification(user.uid, {
-      type: "SELL",
-      title: `Sold ${id}`,
-      message: `${asset.quantity} share(s) @ ₹${sellPrice.toFixed(2)} · Total ₹${(
-        sellPrice * asset.quantity
-      ).toFixed(2)}`,
-    });
-  } catch (error) {
-    console.error(error);
-    toast.error("Something went wrong");
-  }
-};
-
-  // const updateTimeRange = async (range) => {
-  //   setSelectedTimeRange(range);
-
-  //   if (!user) return;
-
-  //   try {
-  //     await updateDoc(doc(db, "users", user.uid), {
-  //       selectedTimeRange: range,
-  //     });
-  //   } catch (error) {
-  //     console.error(error);
-  //     toast.error("Something went wrong");
-  //   }
-  // };
 
 const updateTimeRange = async (range) => {
   setSelectedTimeRange(range);
-
-  // Map time range to tick speed (ms) for the shared market
-  const RANGE_MS = {
-    "5M": 5000,
-    "10M": 10000,
-    "15M": 15000,
-    "30M": 30000,
-    "1H": 60000,
-  };
-  setTickIntervalMs(RANGE_MS[range] ?? 5000);
-
+  // setTickIntervalMs ko hata diya, market hamesha 5s par chalega
+  
   if (!user) return;
-
   try {
     await savePreferences(user.uid, { selectedTimeRange: range });
   } catch (error) {
@@ -3848,30 +4238,6 @@ const updateTimeRange = async (range) => {
   }
 };
 
-  // const toggleIndicator = async (indicator) => {
-  //   if (!user) return;
-
-  //   let updatedIndicators;
-
-  //   if (selectedIndicators.includes(indicator)) {
-  //     updatedIndicators = selectedIndicators.filter(
-  //       (item) => item !== indicator,
-  //     );
-  //   } else {
-  //     updatedIndicators = [...selectedIndicators, indicator];
-  //   }
-
-  //   setSelectedIndicators(updatedIndicators);
-
-  //   try {
-  //     await updateDoc(doc(db, "users", user.uid), {
-  //       selectedIndicators: updatedIndicators,
-  //     });
-  //   } catch (error) {
-  //     console.error(error);
-  //     toast.error("Something went wrong");
-  //   }
-  // };
 
 const toggleIndicator = async (indicator) => {
   if (!user) return;
@@ -3898,8 +4264,14 @@ const quantity = Number(buyQuantity) || 0;
       <Header />
       <main className="container mx-auto px-3 sm:px-4 lg:px-6 max-w-7xl">
         <Breadcrumb stock={id} />
-        <StockChart
-          stock={id}
+        
+        {authLoading || (user && !userData) ? (
+          <div className="flex items-center justify-center h-96">
+            <div className="text-white text-xl">Loading preferences...</div>
+          </div>
+        ) : (
+          <StockChart
+            stock={id}
           user={user}
           addToWatchlist={addToWatchlist}
           removeFromWatchlist={removeFromWatchlist}
@@ -3915,6 +4287,7 @@ const quantity = Number(buyQuantity) || 0;
           setPortfolio={setPortfolio}
           tradeHistory={tradeHistory}
 setTradeHistory={setTradeHistory}
+
           selectedIndicators={selectedIndicators}
           toggleIndicator={toggleIndicator}
           initialPreferences={{
@@ -3934,10 +4307,34 @@ setTradeHistory={setTradeHistory}
     strategies: userData?.preferences?.strategies ?? [],
     customIndicators: userData?.preferences?.customIndicators ?? [],
   }}
-  onPreferencesChange={(partial) => {
-    if (user) savePreferences(user.uid, partial);
-  }}
-        />
+           onPreferencesChange={async (partial) => {
+            if (user) {
+              await savePreferences(user.uid, partial);
+             // await refreshUserData(); // ← Firestore se naya data fetch karo
+            }
+          }}
+                    onCreateAlert={() => setShowAlertModal(true)}
+          alerts={alerts}
+          onDeleteAlert={async (alertId) => {
+            // 1. Local state se alert hatao (UI turant update hoga)
+            const updatedAlerts = alerts.filter((a) => a.id !== alertId);
+            setAlerts(updatedAlerts);
+
+            // 2. Firestore mein update karo
+            if (user) {
+              try {
+                await updateDoc(doc(db, "users", user.uid), {
+                  alerts: updatedAlerts,
+                });
+                toast.success("Alert deleted");
+              } catch (e) {
+                console.error("Failed to delete alert:", e);
+                toast.error("Failed to delete alert");
+              }
+            }
+          }}
+          onSell={() => setShowSellModal(true)}
+        />)}
         {/* {showBuyModal && (
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
             <div className="bg-gray-800 p-4 sm:p-6 rounded-xl w-[95%] sm:w-96 mx-4">
@@ -4040,6 +4437,113 @@ setTradeHistory={setTradeHistory}
     </div>
   </div>
 )}
+
+        {/* 👇 NAYA: SELL MODAL 👇 */}
+        {showSellModal && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+            <div className="bg-gray-800 p-4 sm:p-6 rounded-xl w-[95%] sm:w-96 mx-4">
+              <h2 className="text-2xl font-bold text-white mb-5">Sell Stock</h2>
+
+              <p className="mb-2 text-white">Stock: <b>{id}</b></p>
+              <p className="mb-2 text-white">
+                Owned: <b>{portfolio.find((p) => p.id === id)?.quantity || 0}</b>
+              </p>
+
+              <label className="text-gray-300">Quantity</label>
+              <input
+                type="number"
+                min={1}
+                max={portfolio.find((p) => p.id === id)?.quantity || 1}
+                value={sellQuantity}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  const maxQty = portfolio.find((p) => p.id === id)?.quantity || 1;
+                  setSellQuantity(Math.min(Math.max(1, val), maxQty));
+                }}
+                className="w-full mt-2 mb-5 p-2 rounded bg-gray-700 text-white"
+              />
+
+              {(() => {
+                const livePrice = getPrice(id) ?? 0;
+                const fees = livePrice * sellQuantity * 0.005;
+                return (
+                  <>
+                    <p className="mb-2 text-white">
+                      Current Price : ₹{livePrice.toFixed(2)}
+                    </p>
+                    <p className="mb-2 text-white">
+                      Transaction Fee : ₹{fees.toFixed(2)}
+                    </p>
+                    <p className="font-bold mb-5 text-white">
+                      Net Proceeds : ₹{(livePrice * sellQuantity - fees).toFixed(2)}
+                    </p>
+                  </>
+                );
+              })()}
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => setShowSellModal(false)}
+                  className="flex-1 bg-gray-600 py-2 rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={removeFromPortfolio}
+                  className="flex-1 bg-red-600 py-2 rounded"
+                >
+                  Confirm Sell
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- NAYA: Alert Modal --- */}
+        {showAlertModal && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+            <div className="bg-gray-800 p-4 sm:p-6 rounded-xl w-[95%] sm:w-96 mx-4">
+              <h2 className="text-2xl font-bold text-white mb-5">
+                Create Alert for {id}
+              </h2>
+
+              <label className="text-gray-300">Condition</label>
+              <select
+                value={alertCondition}
+                onChange={(e) => setAlertCondition(e.target.value)}
+                className="w-full mt-2 mb-4 p-2 rounded bg-gray-700 text-white"
+              >
+                <option value="Above">Price Goes Above</option>
+                <option value="Below">Price Goes Below</option>
+              </select>
+
+              <label className="text-gray-300">Target Price (₹)</label>
+              <input
+                type="number"
+                placeholder="Enter price"
+                value={alertTargetPrice}
+                onChange={(e) => setAlertTargetPrice(e.target.value)}
+                className="w-full mt-2 mb-5 p-2 rounded bg-gray-700 text-white"
+              />
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => setShowAlertModal(false)}
+                  className="flex-1 bg-gray-600 py-2 rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateAlert}
+                  className="flex-1 bg-blue-600 py-2 rounded"
+                >
+                  Set Alert
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <OptionsTable stock={id} />
         <OpenInterest />
       </main>

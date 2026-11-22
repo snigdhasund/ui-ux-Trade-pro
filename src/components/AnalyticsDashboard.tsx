@@ -18,8 +18,11 @@ type Props = {
   assets: any[];
   selectedTimeRange: string;
   visibleAnalytics: Toggles;
-setVisibleAnalytics: Dispatch<SetStateAction<Toggles>>;
+  setVisibleAnalytics: Dispatch<SetStateAction<Toggles>>;
   onPreferencesChange?: (partial: any) => void;
+  smaPeriod?: number;
+  emaPeriod?: number;
+  rsiPeriod?: number;
 };
 
 // How many candles each time range should analyze
@@ -31,7 +34,7 @@ const RANGE_TO_POINTS: Record<string, number> = {
   "1H": 60,
 };
 
-function analyzeAsset(asset: any, points: number) {
+function analyzeAsset(asset: any, points: number, smaP: number, emaP: number, rsiP: number) {
   const slice = asset.data.slice(-points);
 
   if (slice.length < 5) {
@@ -50,9 +53,9 @@ function analyzeAsset(asset: any, points: number) {
     };
   }
 
-  const smaArr = calculateSMA(slice, Math.min(14, slice.length - 1));
-  const emaArr = calculateEMA(slice, Math.min(14, slice.length - 1));
-  const rsiArr = calculateRSI(slice, Math.min(14, slice.length - 1));
+  const smaArr = calculateSMA(slice, Math.min(smaP, slice.length - 1));
+  const emaArr = calculateEMA(slice, Math.min(emaP, slice.length - 1));
+  const rsiArr = calculateRSI(slice, Math.min(rsiP, slice.length - 1));
 
   const closes: number[] = slice.map((d: any) => Number(d.close));
   const latest = closes[closes.length - 1];
@@ -120,6 +123,9 @@ export default function AnalyticsDashboard({
   visibleAnalytics,
   setVisibleAnalytics,
   onPreferencesChange,
+  smaPeriod = 20,
+  emaPeriod = 20,
+  rsiPeriod = 14,
 }: Props) {
   const points = RANGE_TO_POINTS[selectedTimeRange] ?? 20;
 
@@ -130,9 +136,9 @@ export default function AnalyticsDashboard({
         .filter((a) => a.visible)
         .map((asset) => ({
           ...asset,
-          analytics: analyzeAsset(asset, points),
+          analytics: analyzeAsset(asset, points, smaPeriod, emaPeriod, rsiPeriod),
         })),
-    [assets, points]
+    [assets, points, smaPeriod, emaPeriod, rsiPeriod] // <-- Dependencies mein add karo
   );
 
   // ---- Toggle handler (persists to preferences) ----

@@ -29,7 +29,10 @@ export function detectDoji(candle) {
   const body = Math.abs(candle.close - candle.open);
   const range = candle.high - candle.low;
 
-  return body <= range * 0.1;
+  if (range === 0) return false; // Division by zero se bachao
+  
+  // 10% se 15% kar do (thoda zyada sensitive)
+  return body <= range * 0.15;
 }
 
 // Returns true if candle is Hammer

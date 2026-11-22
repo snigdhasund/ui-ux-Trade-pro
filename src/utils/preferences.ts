@@ -18,6 +18,8 @@ export type UserPreferences = {
   };
   strategies: any[];
   customIndicators: any[];
+   // NAYA: Chart type aur visibility save karne ke liye
+  assetSettings: Record<string, { chartType: "line" | "bar" | "candlestick"; visible: boolean }>;
 };
 
 export const DEFAULT_PREFERENCES: UserPreferences = {
@@ -37,6 +39,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   },
   strategies: [],
    customIndicators: [], 
+    assetSettings: {},
 };
 
 /**
@@ -47,17 +50,20 @@ export async function loadPreferences(uid: string): Promise<UserPreferences> {
   const snap = await getDoc(ref);
 
   if (!snap.exists()) {
-    await setDoc(ref, {
-      uid,
-      preferences: DEFAULT_PREFERENCES,
-    });
+    await setDoc(
+      ref,
+      {
+        uid,
+        preferences: DEFAULT_PREFERENCES,
+      },
+      { merge: true }
+    );
     return DEFAULT_PREFERENCES;
   }
 
   const data = snap.data();
   const prefs = data.preferences ?? {};
 
-  // Merge with defaults so missing keys don't crash the UI
   return {
     ...DEFAULT_PREFERENCES,
     ...prefs,
@@ -65,8 +71,9 @@ export async function loadPreferences(uid: string): Promise<UserPreferences> {
       ...DEFAULT_PREFERENCES.visibleAnalytics,
       ...(prefs.visibleAnalytics ?? {}),
     },
-        strategies: prefs.strategies ?? [],
+    strategies: prefs.strategies ?? [],
     customIndicators: prefs.customIndicators ?? [],
+    assetSettings: prefs.assetSettings ?? {}, // <-- YEH LINE ADD KARO
   };
 }
 
@@ -86,4 +93,19 @@ export async function savePreferences(
   }
 
   await updateDoc(ref, updates);
+}
+
+/**
+ * COMPLETE REPLACEMENT for arrays (customIndicators, strategies)
+ * Delete ke liye use hoga, taaki partial save se data overwrite na ho.
+ */
+export async function saveArrayPreferences(
+  uid: string,
+  key: "customIndicators" | "strategies",
+  value: any[]
+) {
+  const ref = doc(db, "users", uid);
+  await updateDoc(ref, {
+    [`preferences.${key}`]: value,
+  });
 }

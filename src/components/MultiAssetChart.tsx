@@ -58,6 +58,7 @@ type Props = {
   bollingerData?: { upper: number | null; middle: number | null; lower: number | null }[];
   customIndicatorData?: { id: string; name: string; color: string; values: (number | null)[] }[];
   normalized?: boolean;
+  selectedTimeRange?: string; // <-- YEH ADD KARO
 };
 
 export default function MultiAssetChart({
@@ -70,24 +71,28 @@ export default function MultiAssetChart({
   bollingerData = [],
   customIndicatorData = [],
   normalized = false,
+  selectedTimeRange = "5M", // <-- YEH ADD KARO
 }: Props) {
 
-// export default function MultiAssetChart({
-//   assets,
-//   patterns,
-//   selectedPattern,
-//   selectedIndicators = [],
-//   smaData = [],
-//   emaData = [],
-//   bollingerData = [],
-//   customIndicatorData = [],
-// }: Props) {
+
+  // NAYA: Time range ko points mein convert karo
+  const RANGE_TO_POINTS: Record<string, number> = {
+    "5M": 20,
+    "10M": 30,
+    "15M": 40,
+    "30M": 50,
+    "1H": 60,
+  };
+  const rangePoints = RANGE_TO_POINTS[selectedTimeRange] ?? 60;
+
   const visibleAssets = useMemo(() => assets.filter((a) => a.visible), [assets]);
 
   const minLen = useMemo(() => {
     if (visibleAssets.length === 0) return 0;
-    return Math.min(...visibleAssets.map((a) => a.data.length));
-  }, [visibleAssets]);
+    const rawMin = Math.min(...visibleAssets.map((a) => a.data.length));
+    // Range ke hisaab se cap karo (lekin min se zyada nahi)
+    return Math.min(rawMin, rangePoints);
+  }, [visibleAssets, rangePoints]);
 
   const xLabels = useMemo(() => {
     if (visibleAssets.length === 0) return [];
@@ -183,7 +188,7 @@ export default function MultiAssetChart({
           name: asset.id,
           type: "candlestick",
           // data: slice.map((d) => [d.open, d.close, d.low, d.high]),
-          data: slice.map((d) => toCandle(d)),
+          data: slice && slice.length > 0 ? slice.map((d) => toCandle(d)) : [],
           itemStyle: {
             color: "#22c55e",
             color0: "#ef4444",
@@ -199,7 +204,7 @@ export default function MultiAssetChart({
           name: asset.id,
           type: "bar",
           // data: slice.map((d) => d.close),
-          data: slice.map((d) => toVal(d.close)),
+           data: slice && slice.length > 0 ? slice.map((d) => toVal(d.close)) : [],
           itemStyle: { color: asset.color },
           yAxisIndex: 0,
         });
@@ -208,7 +213,7 @@ export default function MultiAssetChart({
           name: asset.id,
           type: "line",
           // data: slice.map((d) => d.close),
-          data: slice.map((d) => toVal(d.close)),
+          data: slice && slice.length > 0 ? slice.map((d) => toVal(d.close)) : [],
           smooth: true,
           showSymbol: false,
           lineStyle: { width: 2, color: asset.color },
@@ -407,8 +412,8 @@ if (customIndicatorData.length > 0 && visibleAssets.length > 0) {
       <ReactECharts
         option={option}
         style={{ width: "100%", height: "100%" }}
-        notMerge={true}
-        lazyUpdate={true}
+        notMerge={false}
+        lazyUpdate={false}
       />
     </div>
   );

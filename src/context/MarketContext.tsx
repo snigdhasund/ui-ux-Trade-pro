@@ -7,7 +7,8 @@ import {
   useRef,
   useState,
 } from "react";
-
+import { useAuth } from "@/context/AuthContext";
+import { savePreferences } from "@/utils/preferences";
 export type Candle = {
   date: Date;
   open: number;
@@ -49,33 +50,6 @@ const MarketContext = createContext<MarketContextType>({
   setTickIntervalMs: () => {},
 });
 
-// ---------- seed helpers ----------
-// function generateSeedData(startPrice: number, points = 60, intervalMs = 5000): Candle[] {
-//   const out: Candle[] = [];
-//   let price = startPrice;
-
-//   for (let i = points; i >= 0; i--) {
-//     const date = new Date(Date.now() - i * intervalMs);
-//     const open = price;
-//     const close = open + (Math.random() - 0.5) * 12;
-//     const high = Math.max(open, close) + Math.random() * 5;
-//     const low = Math.min(open, close) - Math.random() * 5;
-
-//     out.push({ date, open, high, low, close });
-//     price = close;
-//   }
-
-//   return out;
-// }
-
-// function nextCandle(currentPrice: number): Candle {
-//   const open = currentPrice;
-//   const close = open + (Math.random() - 0.5) * 12;
-//   const high = Math.max(open, close) + Math.random() * 5;
-//   const low = Math.min(open, close) - Math.random() * 5;
-
-//   return { date: new Date(), open, high, low, close };
-// }
 
 function generateSeedData(startPrice: number, points = 60, intervalMs = 5000): Candle[] {
   const out: Candle[] = [];
@@ -84,11 +58,16 @@ function generateSeedData(startPrice: number, points = 60, intervalMs = 5000): C
   for (let i = points; i >= 0; i--) {
     const date = new Date(Date.now() - i * intervalMs);
     const open = price;
-    const pctMove = (Math.random() - 0.5) * 0.006;  // ±0.3%
-    const close = open * (1 + pctMove);
-    const high = Math.max(open, close) * (1 + Math.random() * 0.001);
-    const low = Math.min(open, close) * (1 - Math.random() * 0.001);
-    out.push({ date, open, high, low, close });
+    
+    // Random body movement (koi fixed trend nahi, taaki patterns ban sakein)
+    const bodyMove = (Math.random() - 0.5) * 0.016; // ±0.8%
+    const close = open * (1 + bodyMove);
+    
+    // Wicks alag-alag (Hammer/Doji ke liye)
+    const highWick = Math.max(open, close) * (1 + Math.random() * 0.006); // 0-0.6%
+    const lowWick = Math.min(open, close) * (1 - Math.random() * 0.006);  // 0-0.6%
+    
+    out.push({ date, open, high: highWick, low: lowWick, close });
     price = close;
   }
   return out;
@@ -96,11 +75,15 @@ function generateSeedData(startPrice: number, points = 60, intervalMs = 5000): C
 
 function nextCandle(currentPrice: number): Candle {
   const open = currentPrice;
-  const pctMove = (Math.random() - 0.5) * 0.006;
-  const close = open * (1 + pctMove);
-  const high = Math.max(open, close) * (1 + Math.random() * 0.001);
-  const low = Math.min(open, close) * (1 - Math.random() * 0.001);
-  return { date: new Date(), open, high, low, close };
+  
+  // NAYA: Body movement bada karo (±0.8%), Wicks ko alag karo
+  const bodyMove = (Math.random() - 0.5) * 0.016; // ±0.8%
+  const close = open * (1 + bodyMove);
+  
+  const highWick = Math.max(open, close) * (1 + Math.random() * 0.006); // 0-0.6% wick
+  const lowWick = Math.min(open, close) * (1 - Math.random() * 0.006);  // 0-0.6% wick
+  
+  return { date: new Date(), open, high: highWick, low: lowWick, close };
 }
 
 // ---------- the initial set of market assets (single source of truth) ----------
@@ -370,6 +353,7 @@ const SEED_ASSETS: Asset[] = [
   },
 ];
 export function MarketProvider({ children }: { children: React.ReactNode }) {
+  const { user, userData } = useAuth();
   const [assets, setAssets] = useState<Asset[]>(SEED_ASSETS);
   const [tickIntervalMs, setTickIntervalMs] = useState(5000);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -402,21 +386,72 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
     };
   }, [tickIntervalMs]);
 
+  // ---- NAYA: Load saved chart settings from Firestore on login ----
+  useEffect(() => {
+    // Check karo ki userData load ho chuka hai aur assetSettings hai
+    if (userData?.preferences?.assetSettings) {
+      const savedSettings = userData.preferences.assetSettings;
+      
+      setAssets((prev) =>
+        prev.map((asset) => {
+          const saved = savedSettings[asset.id];
+          if (saved) {
+            return {
+              ...asset,
+              chartType: saved.chartType ?? asset.chartType,
+              visible: saved.visible ?? asset.visible,
+            };
+          }
+          return asset; // Agar saved settings nahi hai, toh default (seed) hi rakho
+        })
+      );
+    }
+  }, [userData]); // Yeh userData change hone par chalega (login ke baad)
+
   const getAsset = (id: string) => assets.find((a) => a.id === id);
   const getPrice = (id: string) => assets.find((a) => a.id === id)?.currentValue;
 
-  const toggleVisibility = (id: string) =>
-    setAssets((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, visible: !a.visible } : a))
-    );
+   const toggleVisibility = (id: string) => {
+    setAssets((prev) => {
+      const asset = prev.find((a) => a.id === id);
+      if (!asset) return prev;
 
-  const updateChartType = (
-    id: string,
-    type: "line" | "bar" | "candlestick"
-  ) =>
-    setAssets((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, chartType: type } : a))
-    );
+      const updated = prev.map((a) =>
+        a.id === id ? { ...a, visible: !a.visible } : a
+      );
+      
+      if (user) {
+        const settings = updated.reduce((acc, a) => {
+          acc[a.id] = { chartType: a.chartType, visible: a.visible };
+          return acc;
+        }, {} as Record<string, any>);
+        
+        // Direct save karo (bina setTimeout ke)
+        savePreferences(user.uid, { assetSettings: settings }).catch(console.error);
+      }
+      return updated;
+    });
+  };
+
+  const updateChartType = (id: string, type: "line" | "bar" | "candlestick") => {
+    setAssets((prev) => {
+      const asset = prev.find((a) => a.id === id);
+      if (!asset || asset.chartType === type) return prev;
+
+      const updated = prev.map((a) => (a.id === id ? { ...a, chartType: type } : a));
+      
+      if (user) {
+        const settings = updated.reduce((acc, a) => {
+          acc[a.id] = { chartType: a.chartType, visible: a.visible };
+          return acc;
+        }, {} as Record<string, any>);
+        
+        // Direct save karo
+        savePreferences(user.uid, { assetSettings: settings }).catch(console.error);
+      }
+      return updated;
+    });
+  };
 
   return (
     <MarketContext.Provider

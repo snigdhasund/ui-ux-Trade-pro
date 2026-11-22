@@ -125,6 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchUserData = async (uid: string): Promise<UserData | null> => {
+    try{
     const ref = doc(db, "users", uid);
     const snap = await getDoc(ref);
     if (!snap.exists()) return null;
@@ -144,6 +145,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       notifications: data.notifications ?? [],
       preferences,
     } as any;
+  }catch(error){
+      console.error("Failed to fetch user data:", error);
+      return null;
+    }
   };
 
   useEffect(() => {

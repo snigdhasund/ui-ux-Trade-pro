@@ -8,7 +8,7 @@ import { useState, useEffect } from "react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/firebase";
 import { db } from "@/firebase";
-import { doc, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
+import { doc, getDoc, updateDoc, arrayUnion,increment } from "firebase/firestore";
 import PortfolioAnalytics from "@/components/ui/PortfolioAnalytics";
 import { addNotification } from "@/utils/notifications";
 import SearchBar from "@/components/SearchBar";
@@ -984,6 +984,16 @@ const openSellModal = (stock: any) => {
   const confirmSell = async () => {
   if (!user || !selectedStock) return;
 
+  // ---- NAYA: Position check ----
+  if (selectedStock.quantity <= 0) {
+    toast.error("You don't own this stock anymore");
+    setShowSellModal(false);
+    return;
+  }
+
+  // ---- FIX: Clamp sellQuantity ----
+  const safeQuantity = Math.min(Math.max(1, Math.floor(sellQuantity)), selectedStock.quantity);
+
   try {
     const livePrice =
       getPrice(selectedStock.id) ??
@@ -997,16 +1007,16 @@ const openSellModal = (stock: any) => {
         return acc;
       }
 
-      const remainingQty = stock.quantity - sellQuantity;
-      const sellAmount = livePrice * sellQuantity;
-      const avgBuyPrice = stock.avgPrice * sellQuantity;
-      const transactionFee = livePrice * sellQuantity * 0.005;
+      const remainingQty = stock.quantity - safeQuantity;
+      const sellAmount = livePrice * safeQuantity;
+      const avgBuyPrice = stock.avgPrice * safeQuantity;
+      const transactionFee = livePrice * safeQuantity * 0.005;
       const realizedPL = sellAmount - avgBuyPrice - transactionFee;
 
       transaction = {
         type: "SELL",
         stock: stock.id,
-        quantity: sellQuantity,
+        quantity: safeQuantity,
         price: livePrice,
         fee: transactionFee,
         total: sellAmount - transactionFee,
@@ -1039,16 +1049,11 @@ const openSellModal = (stock: any) => {
     }, []);
 
       if (transaction) {
-      // Accumulate realized P/L into a single field (never resets)
-      const newRealizedPL = realizedPL + (transaction.realizedPL || 0);
-
       await updateDoc(doc(db, "users", user.uid), {
         portfolio: updatedPortfolio,
         transactions: arrayUnion(transaction),
-        realizedPL: newRealizedPL,
+        realizedPL: increment(transaction.realizedPL || 0), // <-- Atomic increment
       });
-
-      setRealizedPL(newRealizedPL);
     } else {
       await updateDoc(doc(db, "users", user.uid), {
         portfolio: updatedPortfolio,
@@ -1057,16 +1062,16 @@ const openSellModal = (stock: any) => {
 
     setPortfolio(updatedPortfolio);
     setTransactions((prev) => [...prev, transaction]);
-    toast.success(`Sold ${sellQuantity} × ${selectedStock.id}`);
+    toast.success(`Sold ${safeQuantity} × ${selectedStock.id}`);
 
     // Save notification
     if (transaction) {
       await addNotification(user.uid, {
         type: "SELL",
         title: `Sold ${selectedStock.id}`,
-        message: `${sellQuantity} share(s) @ ₹${transaction.price.toFixed(
+        message: `${safeQuantity} share(s) @ ₹${transaction.price.toFixed(
           2
-        )} · Total ₹${(transaction.price * sellQuantity).toFixed(2)}`,
+        )} · Total ₹${(transaction.price * safeQuantity).toFixed(2)}`,
       });
     }
 
@@ -1086,40 +1091,30 @@ const openSellModal = (stock: any) => {
   }, [loading, user, router]);
 
   useEffect(() => {
-  const fetchWatchlist = async () => {
     if (!user) return;
 
-    try {
-      const docRef = doc(db, "users", user.uid);
-      const docSnap = await getDoc(docRef);
+    const docRef = doc(db, "users", user.uid);
 
-      if (docSnap.exists()) {
-        const data = docSnap.data();
+    // FIX: onSnapshot hata kar getDoc use kiya taaki Quota na khatam ho
+    const fetchDashboardData = async () => {
+      try {
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const tx = data.transactions || data.tradeHistory || [];
 
-        // Use `tradeHistory` as fallback if `transactions` is missing
-        const tx = data.transactions || data.tradeHistory || [];
-
-        setWatchlist(data.watchlist || []);
-        setPortfolio(data.portfolio || []);
-        setTransactions(tx);
-        setRealizedPL(data.realizedPL || 0);
+          setWatchlist(data.watchlist || []);
+          setPortfolio(data.portfolio || []);
+          setTransactions(tx);
+          setRealizedPL(data.realizedPL || 0);
+        }
+      } catch (error) {
+        console.error("Firestore fetch error:", error);
       }
-    } catch (error) {
-      console.error(error);
-    }
-  };
+    };
 
-  fetchWatchlist();
-
-  // Re-fetch on window focus + every 5 seconds while page is open
-  const interval = setInterval(fetchWatchlist, 5000);
-  window.addEventListener("focus", fetchWatchlist);
-
-  return () => {
-    clearInterval(interval);
-    window.removeEventListener("focus", fetchWatchlist);
-  };
-}, [user]);
+    fetchDashboardData();
+  }, [user]); // <-- Ab yeh sirf 1 baar chalega, har 5 second mein nahi
 
   if (loading) {
     return (
@@ -1164,13 +1159,17 @@ const openSellModal = (stock: any) => {
             <label>Quantity</label>
 
             <input
-              type="number"
-              min={1}
-              max={selectedStock.quantity}
-              value={sellQuantity}
-              onChange={(e) => setSellQuantity(Number(e.target.value))}
-              className="w-full mt-2 mb-4 p-2 rounded bg-gray-700"
-            />
+  type="number"
+  min={1}
+  max={selectedStock.quantity}
+  value={sellQuantity}
+  onChange={(e) => {
+    const val = Number(e.target.value);
+    // Clamp: 1 se kam nahi, max se zyada nahi
+    setSellQuantity(Math.min(Math.max(1, val), selectedStock.quantity));
+  }}
+  className="w-full mt-2 mb-4 p-2 rounded bg-gray-700"
+/>
 
             {/* <p>Current Price : ₹{selectedStock.currentPrice.toFixed(2)}</p>
 
