@@ -32,6 +32,7 @@ import {
   getDoc,
   setDoc,
 } from "firebase/firestore";
+import { increment } from "firebase/firestore"
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useMemo,useRef } from "react";
 import {
@@ -774,74 +775,9 @@ return {
 
   setPatterns(detected);
 }, [currentAsset.data]);
-  // const toggleAssetVisibility = (id) => {
-  //   setAssets((prev) =>
-  //     prev.map((asset) =>
-  //       asset.id === id ? { ...asset, visible: !asset.visible } : asset,
-  //     ),
-  //   );
-  // };
-  // const updateChartType = (id, chartType) => {
-  //   setAssets((prevAssets) =>
-  //     prevAssets.map((asset) =>
-  //       asset.id === id ? { ...asset, chartType } : asset,
-  //     ),
-  //   );
-  // };
-
-//   useEffect(() => {
-//     const timer = setInterval(() => {
-//       setAssets((prevAssets) =>
-//         prevAssets.map((asset) => {
-//           const nextPoint = generateNextPoint(asset.currentValue);
-
-//          const newCurrentValue = nextPoint.close;
-
-//           const initialValue = asset.data[0].open;
-
-//           const changeValue = newCurrentValue - initialValue;
-
-//           const changePercentage = (changeValue / initialValue) * 100;
-
-//           const updatedData = [...asset.data, nextPoint].slice(-60);
-
-//           return {
-//             ...asset,
-//             currentValue: newCurrentValue,
-//             data: updatedData,
-//             change: {
-//               value: changeValue,
-//               percentage: changePercentage,
-//             },
-//           };
-//         }),
-//       );
-//     }, updateInterval);
-
-//     setPortfolio((prev) =>
-//   prev.map((item) =>
-//     item.id === currentAsset.id
-//       ? {
-//           ...item,
-//           previousPrice: item.currentPrice,
-//           currentPrice: assets[0].currentValue,
-//         }
-//       : item
-//   )
-// );
-
-//     return () => clearInterval(timer);
-//   }, [selectedTimeRange,updateInterval]);
+ 
 
 
-// useEffect(() => {
-//   setAssets((prevAssets) =>
-//     prevAssets.map((asset) => ({
-//       ...asset,
-//       data: generateRandomData(asset.currentValue, points, updateInterval),
-//     }))
-//   );
-// }, [selectedTimeRange, points, updateInterval]);
 
 
   const minLength = Math.min(
@@ -954,7 +890,7 @@ row.BBLower = Number.isFinite(
     }
   };
 
-// const evaluateStrategies = async () => {
+
 //   const newSignals = [];
 // const nextExecuted = [...executedStrategies];
 //   for (const strategy of strategies) {
@@ -1871,417 +1807,10 @@ const id = setTimeout(() => {
 </div>
 
 
-{/* <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 mb-6">
 
 
 
-  <h2 className="text-xl font-bold text-white mb-5">
-    Advanced Analytics Dashboard
-  </h2>
-
-  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-
-    <div className="bg-gray-700 rounded-lg p-4">
-      <div className="text-gray-400 text-sm">
-        Average Price
-      </div>
-
-      <div className="text-white font-bold text-lg">
-        ₹{Number(analytics.averagePrice || 0).toFixed(2)}
-      </div>
-    </div>
-
-    <div className="bg-gray-700 rounded-lg p-4">
-      <div className="text-gray-400 text-sm">
-        Highest Price
-      </div>
-
-      <div className="text-green-400 font-bold text-lg">
-        ₹{Number(analytics.highestPrice || 0).toFixed(2)}
-      </div>
-    </div>
-
-    <div className="bg-gray-700 rounded-lg p-4">
-      <div className="text-gray-400 text-sm">
-        Lowest Price
-      </div>
-
-      <div className="text-red-400 font-bold text-lg">
-        ₹{Number(analytics.lowestPrice || 0).toFixed(2)}
-      </div>
-    </div>
-
-    <div className="bg-gray-700 rounded-lg p-4">
-      <div className="text-gray-400 text-sm">
-        Volatility
-      </div>
-
-      <div className="text-yellow-400 font-bold text-lg">
-  {Number.isFinite(analytics?.volatility)
-    ? analytics.volatility.toFixed(2)
-    : "0.00"}
-  %
-</div>
-    </div>
-
-    <div className="bg-gray-700 rounded-lg p-4">
-      <div className="text-gray-400 text-sm">
-        Average RSI
-      </div>
-
-      <div className="text-blue-400 font-bold text-lg">
-  {Number.isFinite(analytics?.averageRSI)
-    ? analytics.averageRSI.toFixed(2)
-    : "0.00"}
-</div>
-    </div>
-{visibleAnalytics.trend && (
-    <div className="bg-gray-700 rounded-lg p-4">
-      <div className="text-gray-400 text-sm">
-        Trend
-      </div>
-
-      <div
-        className={`font-bold text-lg ${
-          analytics?.trend === "Bullish"
-            ? "text-green-400"
-            : "text-red-400"
-        }`}
-      >
-        {analytics?.trend}
-      </div>
-    </div>
-    )}
-
-  </div>
-
-</div> */}
-
-{/* <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-
-
-{visibleAnalytics.volatility && (
-  <div className="bg-gray-700 rounded-xl p-4">
-    <div className="text-gray-400 text-sm">
-      Volatility
-    </div>
-
-    <div className="text-xl font-bold text-yellow-400">
-      {analytics.volatility}%
-    </div>
-  </div>
-)}
-
-  <div className="bg-gray-700 rounded-xl p-4">
-    <div className="text-gray-400 text-sm">
-      Trend
-    </div>
-
-    <div
-      className={`text-xl font-bold ${
-        analytics.trend === "Bullish"
-          ? "text-green-400"
-          : "text-red-400"
-      }`}
-    >
-      {analytics.trend}
-    </div>
-  </div>
-
-  <div className="bg-gray-700 rounded-xl p-4">
-    <div className="text-gray-400 text-sm">
-      Momentum
-    </div>
-
-    <div className="text-xl font-bold text-blue-400">
-      {analytics.momentum}
-    </div>
-  </div>
-
-  <div className="bg-gray-700 rounded-xl p-4">
-    <div className="text-gray-400 text-sm">
-      Risk
-    </div>
-
-    <div
-      className={`text-xl font-bold ${
-        analytics.risk === "High"
-          ? "text-red-400"
-          : analytics.risk === "Medium"
-          ? "text-yellow-400"
-          : "text-green-400"
-      }`}
-    >
-      {analytics.risk}
-    </div>
-  </div>
-
-</div> */}
-
-{/* <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 mb-6">
-
-  <h2 className="text-xl font-bold text-white mb-5">
-    Live Technical Indicators
-  </h2>
-
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-
-    <div className="bg-gray-700 rounded-lg p-4">
-      <div className="text-gray-400 text-sm">
-        RSI
-      </div>
-
-      <div className="text-2xl font-bold text-red-400">
-  {Number.isFinite(analytics?.latestRSI)
-    ? analytics.latestRSI.toFixed(2)
-    : "0.00"}
-</div>
-
-      <div className="text-xs text-gray-300 mt-1">
-        {analytics.latestRSI > 70
-          ? "Overbought"
-          : analytics.latestRSI < 30
-          ? "Oversold"
-          : "Neutral"}
-      </div>
-    </div>
-
-    <div className="bg-gray-700 rounded-lg p-4">
-      <div className="text-gray-400 text-sm">
-        SMA
-      </div>
-
-      <div className="text-2xl font-bold text-green-400">
-  {Number.isFinite(analytics?.latestSMA)
-    ? analytics.latestSMA.toFixed(2)
-    : "0.00"}
-</div>
-    </div>
-
-    <div className="bg-gray-700 rounded-lg p-4">
-      <div className="text-gray-400 text-sm">
-        EMA
-      </div>
-
-      <div className="text-2xl font-bold text-orange-400">
-  {Number.isFinite(analytics?.latestEMA)
-    ? analytics.latestEMA.toFixed(2)
-    : "0.00"}
-</div>
-    </div>
-
-    <div className="bg-gray-700 rounded-lg p-4">
-      <div className="text-gray-400 text-sm">
-        BB Upper
-      </div>
-
-      {Number.isFinite(analytics?.latestUpperBB)
-  ? analytics.latestUpperBB.toFixed(2)
-  : "0.00"}
-    </div>
-
-    <div className="bg-gray-700 rounded-lg p-4">
-      <div className="text-gray-400 text-sm">
-        BB Middle
-      </div>
-
-      {Number.isFinite(analytics?.latestMiddleBB)
-  ? analytics.latestMiddleBB.toFixed(2)
-  : "0.00"}
-    </div>
-
-    <div className="bg-gray-700 rounded-lg p-4">
-      <div className="text-gray-400 text-sm">
-        BB Lower
-      </div>
-
-      {Number.isFinite(analytics?.latestLowerBB)
-  ? analytics.latestLowerBB.toFixed(2)
-  : "0.00"}
-    </div>
-
-  </div>
-
-</div> */}
-
-
-{/* {visibleAnalytics.insight && (
-<div className="bg-gray-800 border border-gray-700 rounded-xl p-5 mb-6">
-
-  <h2 className="text-xl font-bold text-white mb-5">
-    Market Insights
-  </h2>
-
-  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-    <div className="bg-gray-700 rounded-lg p-4">
-
-      <div className="text-gray-400 text-sm">
-        Market Bias
-      </div>
-
-      <div
-        className={`text-2xl font-bold ${
-          analytics.marketBias === "Bullish"
-            ? "text-green-400"
-            : "text-red-400"
-        }`}
-      >
-        {analytics.marketBias}
-      </div>
-
-    </div>
-
-    <div className="bg-gray-700 rounded-lg p-4">
-
-      <div className="text-gray-400 text-sm">
-        Recommendation
-      </div>
-
-      <div
-        className={`text-2xl font-bold ${
-          analytics.recommendation === "BUY"
-            ? "text-green-400"
-            : analytics.recommendation === "SELL"
-            ? "text-red-400"
-            : "text-yellow-400"
-        }`}
-      >
-        {analytics.recommendation}
-      </div>
-
-    </div>
-
-    <div className="bg-gray-700 rounded-lg p-4">
-
-      <div className="text-gray-400 text-sm">
-        RSI Status
-      </div>
-
-      <div className="text-xl font-bold text-blue-400">
-
-        {analytics.latestRSI > 70
-          ? "Overbought"
-          : analytics.latestRSI < 30
-          ? "Oversold"
-          : "Neutral"}
-
-      </div>
-
-    </div>
-
-  </div>
-
-</div>
-)} */}
-
-
-      {/* <div className="w-full h-[260px] sm:h-[350px] lg:h-[450px]">
       
-{currentAsset.chartType === "candlestick" ? (
-    <CandlestickChart
-    data={currentAsset.data}
-    patterns={patterns}
-    selectedPattern={selectedPattern}
-/>
-  ) : (
-       <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-            <XAxis dataKey="time" stroke="#9CA3AF" tick={{ fontSize: 12 }} />
-            <YAxis stroke="#9CA3AF" domain={["auto", "auto"]} />
-            <Tooltip />
-            <Legend />
-            {visibleAssets
-              .filter((asset) => asset.visible)
-              .map((asset) =>
-                asset.chartType === "line" ? (
-                  <Line
-                    isAnimationActive={true}
-                    animationDuration={700}
-                    key={asset.id}
-                    type="monotone"
-                    dataKey={asset.id}
-                    stroke={asset.color}
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                ) : (
-                  <Bar
-                    isAnimationActive={true}
-                    animationDuration={700}
-                    key={asset.id}
-                    dataKey={asset.id}
-                    fill={asset.color}
-                  />
-                ),
-              )}
-
-              {selectedIndicators.includes("SMA") && (
-  <Line
-    type="monotone"
-    name={`SMA (${smaPeriod})`}
-    dataKey="SMA"
-    stroke="#22C55E"
-    dot={false}
-    strokeWidth={2}
-  />
-)} 
-{selectedIndicators.includes("EMA") && (
-  <Line
-    type="monotone"
-    name={`EMA (${emaPeriod})`}
-    dataKey="EMA"
-    stroke="#F59E0B"
-    dot={false}
-    strokeWidth={2}
-  />
-)}
-{selectedIndicators.includes("Bollinger") && (
-  <>
-    <Line
-      type="monotone"
-      name={`BB Upper (${bbPeriod})`}
-      dataKey="BBUpper"
-      stroke="#8B5CF6"
-      dot={false}
-      strokeDasharray="5 5"
-    />
-
-    <Line
-      type="monotone"
-      name={`BB Middle (${bbPeriod})`}
-      dataKey="BBMiddle"
-      stroke="#A855F7"
-      dot={false}
-    />
-
-    <Line
-      type="monotone"
-      name={`BB Lower (${bbPeriod})`}
-      dataKey="BBLower"
-      stroke="#8B5CF6"
-      dot={false}
-      strokeDasharray="5 5"
-    />
-  </>
-)}
-          </ComposedChart>
-        </ResponsiveContainer>
-        )}
-      </div> */}
-{/* <div className="w-full">
-  <MultiAssetChart
-    assets={assetsWithClickedVisible}
-    patterns={patterns}
-    selectedPattern={selectedPattern}
-    selectedIndicators={selectedIndicators}
-    smaData={smaData}
-    emaData={emaData}
-    bollingerData={bollingerData}
-    customIndicatorData={customIndicatorData}
-  />
-</div> */}
 {/* Normalize toggle */}
 <div className="flex justify-end mb-2">
   <button
@@ -3134,113 +2663,6 @@ asset.returnPercentage>=0
 }
 
 </div>
-
-{/* <div className="bg-gray-800 rounded-xl p-5 mt-8 border border-gray-700">
-
-  <h2 className="text-xl font-bold text-white mb-5">
-    Performance Dashboard
-  </h2>
-
-  <div className="flex flex-wrap gap-3 mb-5">
-
-  {[
-    "trend",
-    "volatility",
-    "momentum",
-    "risk",
-    "insight",
-  ].map((item) => (
-
-    <button
-      key={item}
-      onClick={() =>
-        setVisibleAnalytics((prev) => ({
-          ...prev,
-          [item]: !prev[item],
-        }))
-      }
-      className={`px-4 py-2 rounded-lg transition ${
-        visibleAnalytics[item]
-          ? "bg-green-600"
-          : "bg-gray-700"
-      }`}
-    >
-      {item.toUpperCase()}
-    </button>
-
-  ))}
-
-</div>
-
-  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-
-    <div className="bg-gray-700 rounded-lg p-4">
-      <div className="text-gray-400 text-sm">
-        Total Investment
-      </div>
-
-      <div className="text-white text-xl font-bold">
-        ₹{performanceStats.totalInvestment.toFixed(2)}
-      </div>
-    </div>
-
-    <div className="bg-gray-700 rounded-lg p-4">
-      <div className="text-gray-400 text-sm">
-        Current Value
-      </div>
-
-      <div className="text-white text-xl font-bold">
-        ₹{performanceStats.currentValue.toFixed(2)}
-      </div>
-    </div>
-
-    <div className="bg-gray-700 rounded-lg p-4">
-      <div className="text-gray-400 text-sm">
-        Today's P/L
-      </div>
-
-      <div
-        className={
-          performanceStats.todayPL >= 0
-            ? "text-green-400 text-xl font-bold"
-            : "text-red-400 text-xl font-bold"
-        }
-      >
-        ₹{performanceStats.todayPL.toFixed(2)}
-      </div>
-    </div>
-
-    <div className="bg-gray-700 rounded-lg p-4">
-      <div className="text-gray-400 text-sm">
-        Overall P/L
-      </div>
-
-      <div
-        className={
-          performanceStats.overallPL >= 0
-            ? "text-green-400 text-xl font-bold"
-            : "text-red-400 text-xl font-bold"
-        }
-      >
-        ₹{performanceStats.overallPL.toFixed(2)}
-      </div>
-    </div>
-
-    <div className="bg-gray-700 rounded-lg p-4">
-      <div className="text-gray-400 text-sm">
-        Win Rate
-      </div>
-
-      <div className="text-blue-400 text-xl font-bold">
-        {performanceStats.winRate.toFixed(2)}%
-      </div>
-    </div>
-
-  </div>
-
-</div> */}
-
-
       <PerformancePanel
         performance={assetPerformance}
         highestGainer={highestGainer}
@@ -3799,138 +3221,6 @@ useEffect(() => {
     setShowBuyModal(true);
   };
 
-//   const confirmBuy = async () => {
-//     if (!user) {
-//       toast.error("Please login first");
-//       return;
-//     }
-// const quantity = Number(buyQuantity);
-
-// if (!quantity || quantity < 1) {
-//     toast.error("Please enter a valid quantity");
-//     return;
-// }
-//     const currentPrice = 425000;
-
-//     const transactionCost = currentPrice * quantity * 0.005;
-//     const transaction = {
-//       type: "BUY",
-//       stock: id,
-//       quantity: quantity,
-//       price: currentPrice,
-//       fee: transactionCost,
-//       total: currentPrice * quantity + transactionCost,
-//       date: new Date().toISOString(),
-//     };
-
-//     const asset = {
-//       id,
-
-//       quantity: quantity,
-
-//       avgPrice: currentPrice,
-
-//       currentPrice,
-
-//       previousPrice: currentPrice,
-
-//       transactionCost,
-
-//       costBasis: currentPrice * quantity + transactionCost,
-
-//       unrealizedPL: 0,
-
-//       realizedPL: 0,
-
-//       returnPercentage: 0,
-
-//       portfolioValue: currentPrice * quantity,
-//     };
-
-//     const userRef = doc(db, "users", user.uid);
-//     try {
-//       await updateDoc(userRef, {
-//         portfolio: arrayUnion(asset),
-//         transactions: arrayUnion(transaction),
-//       });
-
-//       setPortfolio((prev) => [...prev, asset]);
-
-//       setIsInPortfolio(true);
-
-//       setShowBuyModal(false);
-
-//       setBuyQuantity(1);
-
-//       toast.success("Stock Purchased");
-//     } catch (error) {
-//       toast.error("Purchase failed");
-//     }
-//   };
-// const confirmBuy = async () => {
-//   if (!user) {
-//     toast.error("Please login first");
-//     return;
-//   }
-
-//   const quantity = Number(buyQuantity);
-//   if (!quantity || quantity < 1) {
-//     toast.error("Please enter a valid quantity");
-//     return;
-//   }
-
-//   // LIVE price from MarketContext
-//   const currentPrice = getPrice(id) ?? 425000;
-
-//   const transactionCost = currentPrice * quantity * 0.005;
-//   const transaction = {
-//     type: "BUY",
-//     stock: id,
-//     quantity,
-//     price: currentPrice,
-//     fee: transactionCost,
-//     total: currentPrice * quantity + transactionCost,
-//     date: new Date().toISOString(),
-//   };
-
-//   const asset = {
-//     id,
-//     quantity,
-//     avgPrice: currentPrice,
-//     currentPrice,
-//     previousPrice: currentPrice,
-//     transactionCost,
-//     costBasis: currentPrice * quantity + transactionCost,
-//     unrealizedPL: 0,
-//     realizedPL: 0,
-//     returnPercentage: 0,
-//     portfolioValue: currentPrice * quantity,
-//   };
-
-//   const userRef = doc(db, "users", user.uid);
-//   try {
-//     await updateDoc(userRef, {
-//       portfolio: arrayUnion(asset),
-//       transactions: arrayUnion(transaction),
-//     });
-//     setPortfolio((prev) => [...prev, asset]);
-//     setIsInPortfolio(true);
-//     setShowBuyModal(false);
-//     setBuyQuantity(1);
-//     toast.success(`Bought ${quantity} × ${id} @ ₹${currentPrice.toFixed(2)}`);
-
-//     // Save notification
-//     await addNotification(user.uid, {
-//       type: "BUY",
-//       title: `Bought ${id}`,
-//       message: `${quantity} share(s) @ ₹${currentPrice.toFixed(2)} · Total ₹${(
-//         currentPrice * quantity
-//       ).toFixed(2)}`,
-//     });
-//   } catch (error) {
-//     toast.error("Purchase failed");
-//   }
-// };
 const confirmBuy = async () => {
   if (!user) {
     toast.error("Please login first");
@@ -3990,7 +3280,7 @@ const confirmBuy = async () => {
               avgPrice: newAvgPrice,
               currentPrice: currentPrice,
               portfolioValue: currentPrice * totalQty,
-              costBasis: totalCost + (item.transactionCost || 0), // Optional: fees add
+              costBasis: totalCost , // Optional: fees add
             }
           : item
       );
@@ -4003,7 +3293,7 @@ const confirmBuy = async () => {
         currentPrice,
         previousPrice: currentPrice,
         transactionCost,
-        costBasis: currentPrice * quantity + transactionCost,
+        costBasis: currentPrice * quantity,
         unrealizedPL: 0,
         realizedPL: 0,
         returnPercentage: 0,
@@ -4030,7 +3320,7 @@ const confirmBuy = async () => {
     await addNotification(user.uid, {
       type: "BUY",
       title: `Bought ${id}`,
-      message: `${quantity} share(s) @ ₹${currentPrice.toFixed(2)} · Total ₹${(currentPrice * quantity).toFixed(2)}`,
+      message: `${quantity} share(s) of ${id} at ₹${currentPrice.toFixed(2)}`,
     });
   } catch (error) {
     console.error("Purchase failed:", error);
@@ -4055,85 +3345,6 @@ const confirmBuy = async () => {
     }
   };
 
-
-
-//   const removeFromPortfolio = async () => {
-//   if (!user) return;
-
-//   try {
-//     const userRef = doc(db, "users", user.uid);
-
-//     const snap = await getDoc(userRef);
-
-//     if (!snap.exists()) return;
-
-//     const data = snap.data();
-
-//     const asset = data.portfolio.find(
-//       (item) => item.id === id
-//     );
-
-//     // NAYA: Safety check — agar position nahi hai to error do
-//     if (!asset || asset.quantity <= 0) {
-//       toast.error("You don't own this stock anymore");
-//       return;
-//     }
-
-//     const sellPrice = asset.currentPrice;
-
-//     const transactionFee =
-//       sellPrice * asset.quantity * 0.005;
-
-//     // Calculate realized P/L for this sell
-//     const sellRealizedPL =
-//       (sellPrice - asset.avgPrice) * asset.quantity - transactionFee;
-
-//     const sellTransaction = {
-//       type: "SELL",
-//       stock: id,
-//       quantity: asset.quantity,
-//       price: sellPrice,
-//       fee: transactionFee,
-//       total:
-//         sellPrice * asset.quantity -
-//         transactionFee,
-//       realizedPL: sellRealizedPL,
-//       date: new Date().toISOString(),
-//     };
-
-//     const updatedPortfolio =
-//       data.portfolio.filter(
-//         (item) => item.id !== id
-//       );
-
-//     // Accumulate total realized P/L (never resets)
-//     const existingRealizedPL = data.realizedPL || 0;
-//     const newRealizedPL = existingRealizedPL + sellRealizedPL;
-
-//     await updateDoc(userRef, {
-//       portfolio: updatedPortfolio,
-//       transactions: arrayUnion(sellTransaction),
-//       realizedPL: newRealizedPL,
-//     });
-
-//     setPortfolio(updatedPortfolio);
-//     setIsInPortfolio(false);
-
-//     toast.success(`${id} sold successfully`);
-
-//     // Save notification
-//     await addNotification(user.uid, {
-//       type: "SELL",
-//       title: `Sold ${id}`,
-//       message: `${asset.quantity} share(s) @ ₹${sellPrice.toFixed(2)} · Total ₹${(
-//         sellPrice * asset.quantity
-//       ).toFixed(2)}`,
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     toast.error("Something went wrong");
-//   }
-// };
   const removeFromPortfolio = async () => {
     if (!user) return;
 
@@ -4197,11 +3408,11 @@ const confirmBuy = async () => {
       await updateDoc(userRef, {
         portfolio: updatedPortfolio,
         transactions: arrayUnion(sellTransaction),
-        realizedPL: newRealizedPL,
+        realizedPL: increment(sellRealizedPL),
       });
 
       setPortfolio(updatedPortfolio);
-      setRealizedPL(newRealizedPL);
+      setRealizedPL(prev => prev + sellRealizedPL);
       
       // Parent state update
       if (remainingQty <= 0) {
@@ -4213,7 +3424,7 @@ const confirmBuy = async () => {
       await addNotification(user.uid, {
         type: "SELL",
         title: `Sold ${id}`,
-        message: `${safeQuantity} share(s) @ ₹${livePrice.toFixed(2)}`,
+        message: `${safeQuantity} share(s) of ${id} at ₹${livePrice.toFixed(2)}`,
       });
 
       setShowSellModal(false);
@@ -4335,54 +3546,7 @@ setTradeHistory={setTradeHistory}
           }}
           onSell={() => setShowSellModal(true)}
         />)}
-        {/* {showBuyModal && (
-          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-            <div className="bg-gray-800 p-4 sm:p-6 rounded-xl w-[95%] sm:w-96 mx-4">
-              <h2 className="text-2xl font-bold text-white mb-5">Buy Stock</h2>
-
-              <label className="text-gray-300">Quantity</label>
-
-              <input
-                type="number"
-                min={1}
-                value={quantity}
-                onChange={(e) =>
-  setBuyQuantity(Number(e.target.value) || 1)
-}
-                className="w-full mt-2 mb-5 p-2 rounded bg-gray-700 text-white"
-              />
-
-              <p className="mb-2">Current Price : ₹425000</p>
-
-              <p className="mb-2">
-                Transaction Fee : ₹{(425000 * quantity * 0.005).toFixed(2)}
-              </p>
-
-              <p className="font-bold mb-5">
-                Total : ₹
-                {(425000 * quantity + 425000 * quantity * 0.005).toFixed(
-                  2,
-                )}
-              </p>
-
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={() => setShowBuyModal(false)}
-                  className="flex-1 bg-gray-600 py-2 rounded"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  onClick={confirmBuy}
-                  className="flex-1 bg-green-600 py-2 rounded"
-                >
-                  Confirm Buy
-                </button>
-              </div>
-            </div>
-          </div>
-        )} */}
+       
 
         {showBuyModal && (
   <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
@@ -4394,8 +3558,13 @@ setTradeHistory={setTradeHistory}
       <input
         type="number"
         min={1}
+        max={100} // <-- YEH LIMIT ADD KARO
         value={buyQuantity}
-        onChange={(e) => setBuyQuantity(Number(e.target.value) || 1)}
+        onChange={(e) => {
+          const val = Number(e.target.value);
+          // Agar 100 se zyada daala, toh 100 kar do
+          setBuyQuantity(Math.min(Math.max(1, val), 100)); 
+        }}
         className="w-full mt-2 mb-5 p-2 rounded bg-gray-700 text-white"
       />
 
@@ -4449,7 +3618,16 @@ setTradeHistory={setTradeHistory}
                 Owned: <b>{portfolio.find((p) => p.id === id)?.quantity || 0}</b>
               </p>
 
-              <label className="text-gray-300">Quantity</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-gray-300">Quantity</label>
+                <button 
+                  type="button"
+                  onClick={() => setSellQuantity(portfolio.find((p) => p.id === id)?.quantity || 1)}
+                  className="text-xs text-blue-400 hover:text-blue-300 font-bold cursor-pointer"
+                >
+                  MAX: {portfolio.find((p) => p.id === id)?.quantity || 0}
+                </button>
+              </div>
               <input
                 type="number"
                 min={1}

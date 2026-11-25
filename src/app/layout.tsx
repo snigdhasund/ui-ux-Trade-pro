@@ -113,7 +113,7 @@ const Footer = () => (
       <div className="mt-8 pt-8 border-t border-gray-700 flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left">
         <p className="text-sm text-gray-400 mb-4 md:mb-0">
           {" "}
-          © 2016-2024 TradePro. All rights reserved, Built with ❤️ in India
+          © 2026 TradePro. All rights reserved, Built with ❤️ in India
         </p>
       </div>
     </div>

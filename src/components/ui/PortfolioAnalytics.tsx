@@ -71,9 +71,10 @@ const COLORS = [
 
 
 
+// liveValues mein live price, liveValue aur returnPercentage sab hai
 const bestPerformer =
-  portfolio.length > 0
-    ? portfolio.reduce((best, current) =>
+  liveValues.length > 0
+    ? liveValues.reduce((best, current) =>
         current.returnPercentage > best.returnPercentage
           ? current
           : best
@@ -81,8 +82,8 @@ const bestPerformer =
     : null;
 
 const worstPerformer =
-  portfolio.length > 0
-    ? portfolio.reduce((worst, current) =>
+  liveValues.length > 0
+    ? liveValues.reduce((worst, current) =>
         current.returnPercentage < worst.returnPercentage
           ? current
           : worst
@@ -90,9 +91,9 @@ const worstPerformer =
     : null;
 
 const largestHolding =
-  portfolio.length > 0
-    ? portfolio.reduce((largest, current) =>
-        current.portfolioValue > largest.portfolioValue
+  liveValues.length > 0
+    ? liveValues.reduce((largest, current) =>
+        current.liveValue > largest.liveValue
           ? current
           : largest
       )
@@ -322,7 +323,7 @@ const diversificationScore =
       </h4>
 
       <p className="text-blue-400">
-        ₹{largestHolding?.portfolioValue?.toFixed(2) ?? 0}
+        ₹{largestHolding?.liveValue?.toFixed(2) ?? 0}
       </p>
 
     </div>

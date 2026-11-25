@@ -534,117 +534,7 @@ const MyWatchlist = ({ watchlist }: { watchlist: string[] }) => {
   );
 };
 
-// const MyPortfolio = ({
-//   portfolio,
-//   onSell,
-// }: {
-//   portfolio: any[];
-//   onSell: (stock: any) => void;
-// }) => {
-//   const [livePortfolio, setLivePortfolio] = useState(portfolio);
 
-//   useEffect(() => {
-//     setLivePortfolio(portfolio);
-//   }, [portfolio]);
-
-//   useEffect(() => {
-//     const interval = setInterval(() => {
-//       setLivePortfolio((prev) =>
-//         prev.map((stock) => {
-//           const randomChange = (Math.random() - 0.5) * 100;
-
-//           const newPrice = Math.max(1, stock.currentPrice + randomChange);
-
-//           const portfolioValue = newPrice * stock.quantity;
-
-//           const unrealizedPL = portfolioValue - stock.costBasis;
-
-//           const returnPercentage = (unrealizedPL / stock.costBasis) * 100;
-
-//           return {
-//             ...stock,
-//             currentPrice: newPrice,
-//             portfolioValue,
-//             unrealizedPL,
-//             returnPercentage,
-//           };
-//         }),
-//       );
-//     }, 3000);
-
-//     return () => clearInterval(interval);
-//   }, []);
-//   console.log(livePortfolio);
-//   return (
-//     <motion.div {...fadeInUp} className="my-8">
-//       <h2 className="text-xl font-semibold text-white mb-4">💼 My Portfolio</h2>
-
-//       {livePortfolio.length === 0 ? (
-//         <div className="bg-gray-800 p-6 rounded-lg text-gray-400">
-//           Portfolio is empty.
-//         </div>
-//       ) : (
-//         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-//           {livePortfolio.map((stock, index) => (
-//             <motion.div
-//               key={`${stock.id}-${index}`}
-//               whileHover={{ scale: 1.05 }}
-//               whileTap={{ scale: 0.95 }}
-//               className="bg-gray-800 p-4 rounded-lg shadow-lg"
-//             >
-//               <h3 className="text-white font-semibold">{stock.id}</h3>
-
-//               <p className="text-gray-400 text-sm">Qty : {stock.quantity}</p>
-
-//               <p className="text-gray-400 text-sm">
-//                 Avg Price : ₹{stock.avgPrice}
-//               </p>
-
-//               <p className="text-gray-400 text-sm">
-//                 Current Price : ₹{(stock.currentPrice ?? 0).toFixed(2)}
-//               </p>
-//               <p className="text-gray-400 text-sm">
-//                 Portfolio Value : ₹{(stock.portfolioValue ?? 0).toFixed(2)}
-//               </p>
-//               <p
-//                 className={`text-sm ${
-//                   stock.returnPercentage >= 0
-//                     ? "text-green-400"
-//                     : "text-red-400"
-//                 }`}
-//               >
-//                 Return : {(stock.returnPercentage ?? 0).toFixed(2)}%
-//               </p>
-//               <p className="text-gray-400 text-sm">
-//                 Cost Basis : ₹{(stock.costBasis ?? 0).toFixed(2)}
-//               </p>
-
-//               <p className="text-gray-400 text-sm">
-//                 Transaction Cost : ₹{(stock.transactionCost ?? 0).toFixed(2)}
-//               </p>
-//               <p className="text-gray-400 text-sm">
-//                 Unrealized P/L : ₹{(stock.unrealizedPL ?? 0).toFixed(2)}
-//               </p>
-//               <p
-//                 className={`text-sm ${
-//                   stock.realizedPL >= 0 ? "text-green-400" : "text-red-400"
-//                 }`}
-//               >
-//                 Realized P/L : ₹{(stock.realizedPL ?? 0).toFixed(2)}
-//               </p>
-//               <motion.button
-//                 onClick={() => onSell(stock)}
-//                 className="mt-3 w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg"
-//               >
-//                 Sell Stock
-//               </motion.button>
-//             </motion.div>
-//           ))}
-//         </div>
-//       )}
-//     </motion.div>
-//   );
-// };
 const MyPortfolio = ({
   portfolio,
   onSell,
@@ -746,7 +636,15 @@ const MyPortfolio = ({
   );
 };
 
-const TransactionHistory = ({ transactions }: { transactions: any[] }) => {
+const TransactionHistory = ({ 
+  transactions, 
+  showAllTransactions, 
+  setShowAllTransactions 
+}: { 
+  transactions: any[], 
+  showAllTransactions: boolean, 
+  setShowAllTransactions: (val: boolean) => void 
+}) => {
   return (
     <motion.div {...fadeInUp} className="my-8">
       <div className="flex justify-between items-center mb-4">
@@ -770,6 +668,7 @@ const TransactionHistory = ({ transactions }: { transactions: any[] }) => {
             .sort(
               (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
             )
+            .slice(0, showAllTransactions ? undefined : 5) // <-- YEH LINE ADD KARO
             .map((transaction, index) => (
               <motion.div
                 key={index}
@@ -808,12 +707,11 @@ const TransactionHistory = ({ transactions }: { transactions: any[] }) => {
                       </p>
 
                       <p className="text-gray-300">
-                        Price :
-                        <span className="text-white">
-                          {" "}
-                          ₹{(transaction.price ?? 0).toFixed(2)}
-                        </span>
-                      </p>
+  {transaction.type === "SELL" ? "Sell Price :" : "Buy Price :"}
+  <span className="text-white">
+    ₹{(transaction.price ?? 0).toFixed(2)}
+  </span>
+</p>
 
                       <p className="text-gray-300">
                         Transaction Fee :
@@ -823,13 +721,15 @@ const TransactionHistory = ({ transactions }: { transactions: any[] }) => {
                         </span>
                       </p>
 
-                      <p className="text-gray-300">
-                        Amount :
-                        <span className="text-blue-400">
-                          {" "}
-                          ₹{(transaction.total ?? 0).toFixed(2)}
-                        </span>
-                      </p>
+<p className="text-gray-300">
+  {transaction.type === "SELL" ? "Net Proceeds :" : "Total Debit :"}
+  <span className="text-blue-400">
+    {transaction.type === "SELL" 
+      ? `₹${((transaction.price * transaction.quantity) - (transaction.fee || 0)).toFixed(2)}`
+      : `₹${((transaction.price * transaction.quantity) + (transaction.fee || 0)).toFixed(2)}`
+    }
+  </span>
+</p>
 
                       {transaction.type === "SELL" && (
                         <p
@@ -859,6 +759,18 @@ const TransactionHistory = ({ transactions }: { transactions: any[] }) => {
             ))}
         </div>
       )}
+      
+      {/* NAYA: View All / Show Less Button */}
+      {transactions.length > 5 && (
+        <div className="mt-4 text-center">
+          <button
+            onClick={() => setShowAllTransactions(!showAllTransactions)}
+            className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded-lg text-sm transition-colors"
+          >
+            {showAllTransactions ? "Show Less" : `View All (${transactions.length})`}
+          </button>
+        </div>
+      )}
     </motion.div>
   );
   console.log(transactions);
@@ -875,11 +787,8 @@ export default function EnhancedTradeProDashboard() {
   const [selectedStock, setSelectedStock] = useState<any>(null);
 
   const [sellQuantity, setSellQuantity] = useState(1);
-  // const openSellModal = (stock: any) => {
-  //   setSelectedStock(stock);
-  //   setSellQuantity(1);
-  //   setShowSellModal(true);
-  // };
+  const [showAllTransactions, setShowAllTransactions] = useState(false); // <-- YEH ADD KARO
+  
 const openSellModal = (stock: any) => {
   const livePrice =
     getPrice(stock.id) ?? stock.currentPrice ?? stock.avgPrice;
@@ -1026,7 +935,7 @@ const openSellModal = (stock: any) => {
 
       if (remainingQty > 0) {
         const transactionCost = livePrice * remainingQty * 0.005;
-        const costBasis = stock.avgPrice * remainingQty + transactionCost;
+        const costBasis = stock.avgPrice * remainingQty ;
         const portfolioValue = livePrice * remainingQty;
         const unrealizedPL = portfolioValue - costBasis;
         const returnPercentage = costBasis
@@ -1062,6 +971,12 @@ const openSellModal = (stock: any) => {
 
     setPortfolio(updatedPortfolio);
     setTransactions((prev) => [...prev, transaction]);
+    
+    // NAYA: State mein bhi realizedPL update karo (UI turant update hoga)
+    if (transaction) {
+       setRealizedPL((prev) => prev + (transaction.realizedPL || 0));
+    }
+
     toast.success(`Sold ${safeQuantity} × ${selectedStock.id}`);
 
     // Save notification
@@ -1069,9 +984,8 @@ const openSellModal = (stock: any) => {
       await addNotification(user.uid, {
         type: "SELL",
         title: `Sold ${selectedStock.id}`,
-        message: `${safeQuantity} share(s) @ ₹${transaction.price.toFixed(
-          2
-        )} · Total ₹${(transaction.price * safeQuantity).toFixed(2)}`,
+        // Ab notification mein sirf execution price aur quantity dikhegi
+        message: `${safeQuantity} share(s) of ${selectedStock.id} at ₹${transaction.price.toFixed(2)}`,
       });
     }
 
@@ -1141,7 +1055,11 @@ const openSellModal = (stock: any) => {
         <MyWatchlist watchlist={watchlist} />
         <MyPortfolio portfolio={portfolio} onSell={openSellModal} />
         <PortfolioAnalytics portfolio={portfolio} realizedPL={realizedPL} />
-        <TransactionHistory transactions={transactions} />
+        <TransactionHistory 
+  transactions={transactions} 
+  showAllTransactions={showAllTransactions}
+  setShowAllTransactions={setShowAllTransactions}
+/>
         <ProductsAndTools />
         <TopGainers />
         <TopByMarketCap />
@@ -1156,20 +1074,27 @@ const openSellModal = (stock: any) => {
               Stock :<b> {selectedStock.id}</b>
             </p>
 
-            <label>Quantity</label>
+            <div className="flex justify-between items-center">
+              <label>Quantity</label>
+              <button 
+                onClick={() => setSellQuantity(selectedStock.quantity)}
+                className="text-xs text-blue-400 hover:text-blue-300 font-bold cursor-pointer"
+              >
+                MAX: {selectedStock.quantity}
+              </button>
+            </div>
 
             <input
-  type="number"
-  min={1}
-  max={selectedStock.quantity}
-  value={sellQuantity}
-  onChange={(e) => {
-    const val = Number(e.target.value);
-    // Clamp: 1 se kam nahi, max se zyada nahi
-    setSellQuantity(Math.min(Math.max(1, val), selectedStock.quantity));
-  }}
-  className="w-full mt-2 mb-4 p-2 rounded bg-gray-700"
-/>
+              type="number"
+              min={1}
+              max={selectedStock.quantity}
+              value={sellQuantity}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                setSellQuantity(Math.min(Math.max(1, val), selectedStock.quantity));
+              }}
+              className="w-full mt-2 mb-4 p-2 rounded bg-gray-700"
+            />
 
             {/* <p>Current Price : ₹{selectedStock.currentPrice.toFixed(2)}</p>
 

@@ -8,6 +8,7 @@ import { db } from "@/firebase";
 import { DEFAULT_PREFERENCES } from "@/utils/preferences";
 import { useRouter } from "next/navigation";
 import { doc, setDoc } from "firebase/firestore";
+import toast from "react-hot-toast"; // <-- YEH ADD KARO
 export default function SignupPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
@@ -20,33 +21,56 @@ export default function SignupPage() {
     }
   }, [loading, user, router]);
   const handleSignup = async () => {
+    // Basic validation to prevent empty submissions
+    if (!name || !email || !password) {
+      toast.error("Please fill in all fields.");
+      return;
+    }
+
     try {
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
         password,
       );
+      
       await setDoc(doc(db, "users", userCredential.user.uid), {
-  uid: userCredential.user.uid,
-  name: name,
-  email: userCredential.user.email,
-  watchlist: [],
-  portfolio: [],
-  tradeHistory: [],
-  transactions: [],
-  preferences: DEFAULT_PREFERENCES,
-});
+        uid: userCredential.user.uid,
+        name: name,
+        email: userCredential.user.email,
+        watchlist: [],
+        portfolio: [],
+        tradeHistory: [],
+        transactions: [],
+        preferences: DEFAULT_PREFERENCES,
+      });
 
       await updateProfile(userCredential.user, {
         displayName: name,
       });
+      
+      toast.success("Account created successfully!");
       router.replace("/dashboard");
     } catch (error: any) {
-      console.log(error);
-      console.log(error.code);
-      console.log(error.message);
+      console.log("Signup Error:", error.code, error.message);
 
-      alert(`${error.code}\n${error.message}`);
+      // Professional error handling based on Firebase error codes
+      switch (error.code) {
+        case "auth/email-already-in-use":
+          toast.error("This email is already registered. Please login instead.");
+          break;
+        case "auth/invalid-email":
+          toast.error("Please enter a valid email address.");
+          break;
+        case "auth/weak-password":
+          toast.error("Password should be at least 6 characters long.");
+          break;
+        case "auth/operation-not-allowed":
+          toast.error("Email/Password signup is not enabled. Contact admin.");
+          break;
+        default:
+          toast.error(error.message || "Something went wrong during signup.");
+      }
     }
   };
 

@@ -16,7 +16,15 @@ const PRESET_COLORS = [
   "#A78BFA",
   "#F472B6",
 ];
-
+// NAYA: Quick Presets for Custom Indicators
+const QUICK_PRESETS = [
+  { label: "SMA Crossover (Fast vs Slow)", formula: "SMA(10) - SMA(30)" },
+  { label: "EMA Crossover (MACD Style)", formula: "EMA(12) - EMA(26)" },
+  { label: "Price vs SMA(20)", formula: "close - SMA(20)" },
+  { label: "RSI + Price", formula: "close + RSI(14)" },
+  { label: "Average of SMA & EMA", formula: "(SMA(10) + EMA(20)) / 2" },
+  { label: "Price Change", formula: "high - low" },
+];
 export default function CustomIndicatorBuilder({ indicators, onChange }: Props) {
   const [name, setName] = useState("");
   const [formula, setFormula] = useState("");
@@ -70,6 +78,27 @@ if (!isValidFormula(formula)) {
       <h2 className="text-xl font-bold text-white mb-4">
         Custom Indicator Builder
       </h2>
+
+      {/* NAYA: Quick Presets Dropdown */}
+      <div className="mb-3">
+        <select
+          onChange={(e) => {
+            const selected = QUICK_PRESETS.find(p => p.label === e.target.value);
+            if (selected) {
+              setFormula(selected.formula);
+              setName(selected.label.split("(")[0].trim()); // Auto-fill name
+            }
+          }}
+          className="w-full bg-gray-700 p-2 rounded text-white placeholder-gray-400 mb-3"
+        >
+          <option value="">-- Or choose a Quick Preset --</option>
+          {QUICK_PRESETS.map((preset) => (
+            <option key={preset.label} value={preset.label}>
+              {preset.label}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <input
